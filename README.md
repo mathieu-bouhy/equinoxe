@@ -42,3 +42,14 @@ bun run build
 ```
 
 Les variables et les données locales contenant des secrets sont exclues de Git. Ne versionnez jamais `apps/api/.env.local` ni le dossier `data`.
+
+## Déploiement Render (première version partagée)
+
+Le dépôt inclut un `render.yaml` et un `Dockerfile` pour déployer l'application comme un unique service HTTPS. Le frontend et l'API partagent alors la même origine, ce qui préserve les cookies de session HTTP-only.
+
+1. Dans Render, choisissez **New > Blueprint** puis sélectionnez ce dépôt et la branche `main`.
+2. Render détecte `render.yaml`. Vérifiez la région **Frankfurt**, le plan **Starter** et le disque persistant de 1 Go monté sur `/var/data`.
+3. Avant le premier déploiement, renseignez les variables dont la valeur est demandée : administrateur Equinoxe, `APP_ORIGIN` (l'URL `https://…onrender.com` fournie par Render) et les variables Odoo Gimi/Lonneux. Ne copiez jamais `apps/api/.env.local` dans GitHub.
+4. Lancez le déploiement et vérifiez `https://votre-url/health`, puis connectez-vous à l'application.
+
+Le disque persistant convient à cette première version avec une seule instance applicative. Pour la montée en charge, le multi-instance ou une exigence de haute disponibilité, la prochaine évolution sera la migration des repositories JSON vers PostgreSQL.

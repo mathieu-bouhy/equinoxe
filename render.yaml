@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: equinoxe
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /health
+    autoDeploy: false
+    disk:
+      name: equinoxe-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: APP_DATA_DIR
+        value: /var/data
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_TOKEN_TTL_HOURS
+        value: "24"
+      - key: EQUINOXE_ADMIN_EMAIL
+        sync: false
+      - key: EQUINOXE_ADMIN_PASSWORD
+        sync: false
+      - key: EQUINOXE_ADMIN_NAME
+        value: Administrateur Equinoxe
+      - key: APP_ORIGIN
+        sync: false
+      - key: GIMI_ODOO_BASE_URL
+        sync: false
+      - key: GIMI_ODOO_DATABASE
+        sync: false
+      - key: GIMI_ODOO_USERNAME
+        sync: false
+      - key: GIMI_ODOO_API_KEY
+        sync: false
+      - key: LONNEUX_ODOO_BASE_URL
+        sync: false
+      - key: LONNEUX_ODOO_DATABASE
+        sync: false
+      - key: LONNEUX_ODOO_USERNAME
+        sync: false
+      - key: LONNEUX_ODOO_API_KEY
+        sync: false
+      - key: ODOO_RPC_TIMEOUT_MS
+        value: "15000"
+      - key: ODOO_RPC_RETRIES
+        value: "1"
