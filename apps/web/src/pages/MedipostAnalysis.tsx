@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BarChart3, ExternalLink, FileCheck2, Scale, Target, Users } from 'lucide-react';
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card } from '../components/ui';
 import './medipost-analysis.css';
 
@@ -81,7 +82,15 @@ function CompetitorProfiles({active,selected,setSelected}:{active:Competitor;sel
   ].map(([title,text],index)=><Card key={title}><span>0{index+1}</span><h3>{title}</h3><p>{text}</p></Card>)}</div>
 </div>}
 
-function CompetitorTrend({company}:{company:Competitor}){const history=company.history??[],maxRevenue=Math.max(...history.map(row=>row.revenue??0),1),maxEbitda=Math.max(...history.map(row=>Math.abs(row.ebitda)),1);return <Card className="competitor-trend"><div className="analysis-card-head"><div><p className="eyebrow">Évolution financière</p><h3>{company.name} · dernières données disponibles</h3></div><span>Montants en M€ · ETP moyens</span></div><div className="analysis-table-wrap"><table className="dossier-table"><thead><tr><th>Exercice</th><th>Chiffre d’affaires</th><th>EBITDA</th><th>ETP</th><th>Évolution visuelle</th></tr></thead><tbody>{history.map(row=><tr key={row.year}><td><strong>{row.year}</strong></td><td>{money(row.revenue)}</td><td>{money(row.ebitda)}</td><td>{row.fte.toLocaleString('fr-BE')}</td><td><div className="trend-bars"><span title="Chiffre d’affaires"><i className="revenue" style={{width:`${((row.revenue??0)/maxRevenue)*100}%`}}/></span><span title="EBITDA"><i className={row.ebitda<0?'negative':'ebitda'} style={{width:`${(Math.abs(row.ebitda)/maxEbitda)*100}%`}}/></span></div></td></tr>)}</tbody></table></div><p className="analysis-note">Barre claire : chiffre d’affaires. Barre dorée : EBITDA ; rouge : EBITDA négatif. Les ruptures de périmètre éventuelles sont à lire avec prudence.</p></Card>}
+function CompetitorTrend({company}:{company:Competitor}) {
+  const data = (company.history ?? []).filter(row => row.year >= 2022).map(row => ({
+    year: String(row.year),
+    revenue: row.revenue === null ? null : Math.round(row.revenue / 1000),
+    ebitda: Math.round(row.ebitda / 1000),
+    fte: row.fte,
+  }));
+  return <Card className="competitor-trend"><div className="analysis-card-head"><div><p className="eyebrow">Évolution financière</p><h3>{company.name} · dernières données disponibles</h3></div><span>k€ à gauche · ETP à droite</span></div><div className="competitor-chart"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={data} margin={{ top: 12, right: 22, left: 10, bottom: 2 }}><CartesianGrid stroke="#eadbc6" strokeDasharray="3 3" vertical={false}/><XAxis dataKey="year" tickLine={false} axisLine={{ stroke: '#eadbc6' }}/><YAxis yAxisId="amount" width={54} tickLine={false} axisLine={false} label={{ value: 'k€', angle: -90, position: 'insideLeft', fill: '#6d5a46' }}/><YAxis yAxisId="fte" orientation="right" width={48} tickLine={false} axisLine={false} label={{ value: 'ETP', angle: 90, position: 'insideRight', fill: '#6d5a46' }}/><Tooltip formatter={(value: number | string, name: string) => [`${Number(value).toLocaleString('fr-BE')} ${name === 'ETP' ? 'ETP' : 'k€'}`, name]}/><Legend/><Bar yAxisId="amount" dataKey="revenue" name="Chiffre d’affaires" fill="#d7b576" radius={[6, 6, 0, 0]}/><Bar yAxisId="amount" dataKey="ebitda" name="EBITDA" fill="#e59b1f" radius={[6, 6, 0, 0]}/><Line yAxisId="fte" type="monotone" dataKey="fte" name="ETP" stroke="#3b1f12" strokeWidth={3} dot={{ r: 4, fill: '#fff', stroke: '#3b1f12', strokeWidth: 2 }}/></ComposedChart></ResponsiveContainer></div><p className="analysis-note">Chiffre d’affaires et EBITDA en milliers d’euros sur l’axe gauche ; ETP moyens sur l’axe droit. Les ruptures de périmètre éventuelles sont à lire avec prudence.</p></Card>
+}
 
 const marketUnits=[
   {id:'nutrition',label:'Nutrition, stomie & incontinence',score:'4,1 / 5',thesis:'Un marché de soins récurrents où la coordination entre prescripteur, remboursement et livraison compte davantage que la largeur d’assortiment.',drivers:['Vieillissement, chronicité et maintien à domicile soutiennent des besoins réguliers.','Prescription, remboursement et dispositifs spécialisés structurent l’accès au patient.','La livraison, le conseil et la disponibilité évitent les ruptures de traitement.'],pressure:['Dépendance aux fabricants et aux nomenclatures de remboursement.','Qualité de service critique : une rupture logistique peut provoquer un changement de fournisseur.'],position:'Nutristoma est le pôle le plus défendable de Médipost : relation hospitalière, connaissance du parcours de soins et récurrence sont des barrières pratiques.'},
