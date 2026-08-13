@@ -1,0 +1,43 @@
+import { useState } from 'react';
+import { GripVertical, Plus, Save, Sigma, Trash2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useOutletContext, useParams } from 'react-router-dom';
+import type { Company, ProfitLossFormulaOperator, ProfitLossSection, ProfitLossSubsection } from '@equinoxe/shared';
+import { api } from '../services/api';
+import { Button, Card, ErrorState, Input, LoadingState, PageHeader, Select } from '../components/ui';
+import './pnl-config.css';
+
+const blankSection=(companyId:string,order:number):ProfitLossSection=>({id:crypto.randomUUID(),companyId,label:'Nouvelle rubrique',kind:'accounts',prefixes:[],formula:[],order,createdAt:'',updatedAt:''});
+const blankCalculation=(companyId:string,order:number):ProfitLossSection=>({id:crypto.randomUUID(),companyId,label:'Nouveau calcul',kind:'calculation',prefixes:[],formula:[],order,createdAt:'',updatedAt:''});
+const blankSub=(companyId:string,parentSectionId:string,order:number):ProfitLossSubsection=>({id:crypto.randomUUID(),companyId,parentSectionId,label:'Nouveau sous-groupe analytique',prefixes:[],order,createdAt:'',updatedAt:''});
+
+export function PnlConfig(){
+  const {companies}=useOutletContext<{companies:Company[]}>(),{companySlug}=useParams(),current=companies.find(company=>company.slug===companySlug),qc=useQueryClient();
+  if(!current)return <ErrorState message="Société de configuration introuvable."/>;
+  const analyticsEnabled=current.slug==='gimi',[level,setLevel]=useState<'primary'|'secondary'>('primary'),[draggedId,setDraggedId]=useState<string|null>(null);
+  const sectionsQ=useQuery({queryKey:['sections',current.id],queryFn:()=>api.sections(current.id)}),subQ=useQuery({queryKey:['subsections',current.id],queryFn:()=>api.subsections(current.id),enabled:analyticsEnabled});
+  const [sections,setSections]=useState<ProfitLossSection[]|null>(null),[subsections,setSubsections]=useState<ProfitLossSubsection[]|null>(null);
+  const saveSections=useMutation({mutationFn:(rows:ProfitLossSection[])=>api.saveSections(current.id,rows),onSuccess:data=>{setSections(data);qc.invalidateQueries({queryKey:['profit-loss',current.id]})}}),saveSubs=useMutation({mutationFn:(rows:ProfitLossSubsection[])=>api.saveSubsections(current.id,rows),onSuccess:data=>{setSubsections(data);qc.invalidateQueries({queryKey:['profit-loss',current.id]})}});
+  if(sectionsQ.isLoading||(analyticsEnabled&&subQ.isLoading))return <LoadingState/>;
+  if(sectionsQ.error||(analyticsEnabled&&subQ.error)||!sectionsQ.data)return <ErrorState message="Impossible de charger la configuration."/>;
+  const rows=sections??sectionsQ.data,subs=subsections??subQ.data??[];
+  const changeRow=(id:string,change:Partial<ProfitLossSection>)=>setSections(rows.map(row=>row.id===id?{...row,...change}:row));
+  const moveRow=(targetId:string)=>{if(!draggedId||draggedId===targetId)return;const from=rows.findIndex(row=>row.id===draggedId),to=rows.findIndex(row=>row.id===targetId),next=[...rows], [moved]=next.splice(from,1);next.splice(to,0,moved);setSections(next);setDraggedId(null)};
+  const prefixEditor=(prefixes:string[],set:(v:string[])=>void)=><div className="prefixes">{prefixes.map((prefix,i)=><span key={`${prefix}-${i}`}><Input value={prefix} inputMode="numeric" aria-label="Préfixe de compte" onChange={e=>set(prefixes.map((p,n)=>n===i?e.target.value.replace(/\D/g,''):p))}/><button type="button" onClick={()=>set(prefixes.filter((_,n)=>n!==i))} aria-label="Retirer le compte">×</button></span>)}<Button variant="secondary" type="button" onClick={()=>set([...prefixes,''])}>+ Compte</Button></div>;
+  const formulaEditor=(row:ProfitLossSection)=><div className="formula-editor"><span className="formula-caption"><Sigma size={15}/>Calcul</span>{row.formula.map((term,index)=><span className="formula-chip" key={`${term.sectionId}-${index}`}><Select aria-label="Opération" value={term.operator} onChange={e=>changeRow(row.id,{formula:row.formula.map((item,n)=>n===index?{...item,operator:e.target.value as ProfitLossFormulaOperator}:item)})}><option value="add">+</option><option value="subtract">−</option></Select><Select aria-label="Rubrique source" value={term.sectionId} onChange={e=>changeRow(row.id,{formula:row.formula.map((item,n)=>n===index?{...item,sectionId:e.target.value}:item)})}>{rows.filter(source=>source.id!==row.id).map(source=><option key={source.id} value={source.id}>{source.label}</option>)}</Select><button type="button" onClick={()=>changeRow(row.id,{formula:row.formula.filter((_,n)=>n!==index)})} aria-label="Retirer cet élément du calcul">×</button></span>)}<Button variant="secondary" type="button" onClick={()=>{const source=rows.find(source=>source.id!==row.id);if(source)changeRow(row.id,{formula:[...row.formula,{sectionId:source.id,operator:'add'}]})}}>+ Élément</Button></div>;
+  return <>
+    <PageHeader title={`Configuration du compte de résultat · ${current.name}`}><Button onClick={()=>level==='primary'?saveSections.mutate(rows.map((row,order)=>({...row,order}))):saveSubs.mutate(subs.map((row,order)=>({...row,order})))} disabled={saveSections.isPending||saveSubs.isPending}><Save size={16}/>{saveSections.isPending||saveSubs.isPending?'Enregistrement…':'Enregistrer'}</Button></PageHeader>
+    {analyticsEnabled&&<div className="config-levels" role="tablist"><button className={level==='primary'?'active':''} onClick={()=>setLevel('primary')}>Premier niveau</button><button className={level==='secondary'?'active':''} onClick={()=>setLevel('secondary')}>Deuxième niveau analytique</button></div>}
+    {level==='primary'?<>
+      <p className="config-intro">Glissez une ligne pour modifier son ordre. Les rubriques regroupent des comptes, les lignes <strong>Calcul</strong> additionnent ou soustraient les rubriques choisies.</p>
+      <div className="config-list">{rows.map((row,index)=><Card className={`section-card ${row.kind==='calculation'?'calculation-card':''}`} key={row.id} draggable onDragStart={()=>setDraggedId(row.id)} onDragOver={event=>event.preventDefault()} onDrop={()=>moveRow(row.id)}>
+        <button type="button" className="drag-handle" aria-label={`Déplacer ${row.label}`} title="Glisser pour réordonner"><GripVertical size={19}/></button>
+        <div className="section-position">{index+1}</div><div className="section-content"><div className="section-title"><Input value={row.label} onChange={e=>changeRow(row.id,{label:e.target.value})}/><button className="icon-button" type="button" onClick={()=>setSections(rows.filter(x=>x.id!==row.id))} aria-label="Supprimer"><Trash2 size={17}/></button></div>{row.kind==='accounts'?prefixEditor(row.prefixes,v=>changeRow(row.id,{prefixes:v})):formulaEditor(row)}</div>
+      </Card>)}</div>
+      <div className="config-actions"><Button variant="secondary" onClick={()=>setSections([...rows,blankSection(current.id,rows.length)])}><Plus size={16}/>Ajouter une rubrique</Button><Button variant="secondary" onClick={()=>setSections([...rows,blankCalculation(current.id,rows.length)])}><Sigma size={16}/>Ajouter un calcul</Button></div>
+    </>:<>
+      <p className="config-intro">Créez des sous-groupes analytiques, liés à une rubrique du premier niveau. Saisissez des numéros de comptes complets, comme <code>700007</code>.</p><div className="config-list">{subs.map((sub,index)=><Card className="section-card analytical-card" key={sub.id}><div className="section-position">{index+1}</div><div className="section-content"><div className="section-title"><Input value={sub.label} onChange={e=>setSubsections(subs.map(x=>x.id===sub.id?{...x,label:e.target.value}:x))}/><button className="icon-button" type="button" onClick={()=>setSubsections(subs.filter(x=>x.id!==sub.id))} aria-label="Supprimer"><Trash2 size={17}/></button></div><Select value={sub.parentSectionId} onChange={e=>setSubsections(subs.map(x=>x.id===sub.id?{...x,parentSectionId:e.target.value}:x))}>{rows.filter(section=>section.kind==='accounts').map(section=><option key={section.id} value={section.id}>{section.label}</option>)}</Select>{prefixEditor(sub.prefixes,v=>setSubsections(subs.map(x=>x.id===sub.id?{...x,prefixes:v}:x)))}</div></Card>)}</div><Button variant="secondary" onClick={()=>setSubsections([...subs,blankSub(current.id,rows.find(row=>row.kind==='accounts')?.id??'',subs.length)])}><Plus size={16}/>Ajouter un sous-groupe</Button>
+    </>}
+    {(saveSections.error||saveSubs.error)&&<ErrorState message="La sauvegarde a échoué : vérifiez les rubriques, formules et numéros de comptes."/>}
+  </>;
+}
