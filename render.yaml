@@ -5,7 +5,7 @@ services:
     plan: starter
     region: frankfurt
     healthCheckPath: /health
-    autoDeploy: false
+    autoDeploy: true
     disk:
       name: equinoxe-data
       mountPath: /var/data
