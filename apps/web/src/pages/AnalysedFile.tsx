@@ -57,14 +57,15 @@ const report: ReportLine[] = [
 
 export function MedipostFile() {
   const {me}=useOutletContext<{me:PublicUser}>();
-  if(me.role!=='admin'&&!me.analysisAccess.includes('medipost'))return <Navigate to="/sans-acces" replace/>;
-  const access=useQuery({queryKey:['analysed-file','medipost'],queryFn:()=>api.analysedFile('medipost')});
-  if(access.isLoading)return <div className="state">Vérification de l’accès au dossier…</div>;
-  if(access.error)return <Navigate to="/sans-acces" replace/>;
+  const authorised=me.role==='admin'||me.analysisAccess.includes('medipost');
+  const access=useQuery({queryKey:['analysed-file','medipost'],queryFn:()=>api.analysedFile('medipost'),enabled:authorised});
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [percentages, setPercentages] = useState(false);
   const [view, setView] = useState<'pnl'|'balance'|'assumptions'|'analysis'>('pnl');
   const [business,setBusiness]=useState<BusinessAssumptions>({growth:{2026:.05,2027:.05,2028:.05},companyValue:4000000,cashExtraction:800000,loanAmount:3200000,loanYears:7,loanRate:.04,workingCapitalRate:.05,capexRate:271396/12403419,rates:{'Autres produits d’exploitation':{2026:165518/12403419,2027:165518/12403419,2028:165518/12403419},'Marchandises et approvisionnements':{2026:-7553179/12403419,2027:-7553179/12403419,2028:-7553179/12403419},'Services et biens divers':{2026:-1708634/12403419,2027:-1708634/12403419,2028:-1708634/12403419},'Frais de personnel':{2026:-2336496/12403419,2027:-2336496/12403419,2028:-2336496/12403419},'Autres charges d’exploitation':{2026:-119208/12403419,2027:-119208/12403419,2028:-119208/12403419},'Amortissements et réductions de valeur':{2026:-271396/12403419,2027:-271396/12403419,2028:-271396/12403419},'Produits financiers':{2026:15019/12403419,2027:15019/12403419,2028:15019/12403419},'Impôts sur le résultat':{2026:-142705/12403419,2027:-142705/12403419,2028:-142705/12403419}}});
+  if(!authorised)return <Navigate to="/sans-acces" replace/>;
+  if(access.isLoading)return <div className="state">Vérification de l’accès au dossier…</div>;
+  if(access.error)return <Navigate to="/sans-acces" replace/>;
   const toggle = (label: string) => setOpen(current => { const next = new Set(current); next.has(label) ? next.delete(label) : next.add(label); return next; });
   return <>
     <PageHeader title="Medipost"><p className="breadcrumb">Dossiers analysés / Medipost</p></PageHeader>
