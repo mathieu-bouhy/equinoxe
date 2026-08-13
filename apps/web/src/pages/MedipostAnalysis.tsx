@@ -5,7 +5,7 @@ import './medipost-analysis.css';
 
 type AnalysisView='comparables'|'competitors'|'market'|'swot'|'method'|'conclusion';
 type SortKey='similarity'|'revenue'|'margin'|'perFte';
-type CompetitorHistory={year:number;revenue:number|null;ebitda:number;fte:number;purchases?:number|null;grossMargin?:number|null;staffCosts?:number|null;services?:number|null};
+type CompetitorHistory={year:number;revenue:number|null;ebitda:number;fte:number;otherIncome?:number|null;purchases?:number|null;grossMargin?:number|null;staffCosts?:number|null;services?:number|null};
 type Competitor={id:string;name:string;legal:string;year:string;revenue:number|null;ebitda:number;margin:number|null;fte:number;similarity:number;model:string;scores:number[];analysis:string;source:string;history?:CompetitorHistory[]};
 
 const dimensions=['Bandagisterie','Matériel paramédical','B2B','B2C','E-commerce','Homecare','Nutrition / stomie','Mobilité','Service technique','Réseau physique'];
@@ -19,6 +19,18 @@ const competitors:Competitor[]=[
   {id:'deforce',name:'Deforce Medical',legal:'BE 0427.495.331',year:'2024',revenue:7835840,ebitda:634328,margin:.08095,fte:15.4,similarity:57,model:'Grossiste B2B digital non hospitalier',scores:[1,3,3,1,3,1,1,1,0,1],analysis:'Très efficace sur les fournitures professionnelles standardisées et l’e-commerce. Faible recouvrement sur le parcours remboursé, la bandagisterie agréée, la mobilité complexe et le suivi clinique à domicile.',source:'Deforce.xlsx — dépôt BNB, exercice 2024',history:[{year:2021,revenue:null,ebitda:1246854,fte:9.6},{year:2022,revenue:3061007,ebitda:344206,fte:10.6},{year:2023,revenue:4539710,ebitda:-71063,fte:12.3},{year:2024,revenue:7835840,ebitda:634328,fte:15.4}]},
   {id:'remedus',name:'Mediq Remedus',legal:'BE 0456.716.679',year:'2025',revenue:16697127,ebitda:1734079,margin:.10385,fte:64.6,similarity:56,model:'Hospitalisation et thérapies à domicile',scores:[0,1,2,2,3,3,3,0,2,0],analysis:'Le benchmark le plus pertinent pour Nutristoma : nutrition, coordination hospitalière, livraison, équipements et suivi multidisciplinaire. Il est peu comparable au reste de Médipost faute de magasin, mobilité et catalogue généraliste.',source:'Remedus.xlsx — dépôt BNB, exercice 2025',history:[{year:2022,revenue:12988982,ebitda:2355624,fte:51.7},{year:2023,revenue:14231465,ebitda:1093603,fte:57.7},{year:2024,revenue:15725411,ebitda:847458,fte:60.8},{year:2025,revenue:16697127,ebitda:1734079,fte:64.6}]},
 ];
+
+// Imported from the Companyweb annual-account exports supplied for each comparable.
+// Charges are stored with a negative sign, consistently with the Equinoxe P&L.
+const competitorFinancialDetails:Record<string,Record<number,Partial<CompetitorHistory>>>={
+  medipost:{2024:{otherIncome:203716,purchases:-7283749,grossMargin:4827323,staffCosts:-2259181,services:-1689170},2025:{otherIncome:165518,purchases:-7553179,grossMargin:5015758,staffCosts:-2336496,services:-1708634}},
+  sodimed:{2022:{otherIncome:173643,purchases:-5658446,services:-860842,staffCosts:-1692527},2023:{otherIncome:175937,purchases:-4472343,services:-641336,staffCosts:-1325762},2024:{otherIncome:130865,purchases:-6088055,services:-900029,staffCosts:-1692320},2025:{otherIncome:119671,purchases:-6522349,services:-1666501,staffCosts:-1684206}},
+  actimed:{2022:{revenue:2330822,staffCosts:-374393},2023:{staffCosts:-443303},2024:{staffCosts:-459359},2025:{staffCosts:-368746}},
+  arseus:{2022:{otherIncome:116678,purchases:-710581,services:-1130413,staffCosts:-578951},2023:{otherIncome:116910,purchases:-1367078,services:-1178044,staffCosts:-927840},2024:{otherIncome:136942,purchases:-1205747,services:-1391790,staffCosts:-1052608},2025:{otherIncome:1078552,purchases:-26309053,services:-9867609,staffCosts:-7551739}},
+  eqwal:{2022:{otherIncome:975045,purchases:-6277340,services:-5860073,staffCosts:-6430584},2023:{otherIncome:638338,purchases:-7500553,services:-6753455,staffCosts:-8046188},2024:{otherIncome:1445571,purchases:-10004883,services:-10214180,staffCosts:-11285212},2025:{otherIncome:2011944,purchases:-11689301,services:-11532481,staffCosts:-13785187}},
+  deforce:{2022:{otherIncome:6633,purchases:-1731890,services:-606707,staffCosts:-377769},2023:{otherIncome:31181,purchases:-2892478,services:-887701,staffCosts:-815766},2024:{otherIncome:269021,purchases:-4921903,services:-1211716,staffCosts:-1564571}},
+  remedus:{2022:{otherIncome:220376,purchases:-3805967,services:-3612651,staffCosts:-3427076},2023:{otherIncome:158500,purchases:-4965327,services:-4378343,staffCosts:-3933876},2024:{otherIncome:31753,purchases:-6187236,services:-4032426,staffCosts:-4680041},2025:{otherIncome:691626,purchases:-6474707,services:-3906135,staffCosts:-5244394}},
+};
 
 const porterByUnit={
   nutrition:[['Rivalité',3.2,'Spécialistes du homecare et fournisseurs structurés ; la relation clinique locale reste différenciante.'],['Pouvoir des patients / payeurs',3.7,'Prescription, remboursement et qualité de prise en charge conditionnent l’accès au patient.'],['Pouvoir des fournisseurs',4.1,'Marques, dispositifs et règles de compatibilité renforcent le pouvoir fournisseur.'],['Substituts',2.3,'Peu de substituts dès lors que le protocole est prescrit et que la continuité est assurée.'],['Nouveaux entrants',2.1,'Barrière élevée : réseau de prescripteurs, expertise, organisation et logistique spécialisée.']],
@@ -83,15 +95,15 @@ function CompetitorProfiles({active,selected,setSelected}:{active:Competitor;sel
 </div>}
 
 function CompetitorTrend({company}:{company:Competitor}) {
-  const data = (company.history?.filter(row => row.year >= 2022) ?? [{ year: Number(company.year), revenue: company.revenue, ebitda: company.ebitda, fte: company.fte }]).sort((a,b) => a.year - b.year);
+  const data = (company.history?.filter(row => row.year >= 2022) ?? [{ year: Number(company.year), revenue: company.revenue, ebitda: company.ebitda, fte: company.fte }]).map(row => ({ ...row, ...competitorFinancialDetails[company.id]?.[row.year] })).sort((a,b) => a.year - b.year);
   const amount = (value:number|null|undefined) => value === null || value === undefined ? '—' : new Intl.NumberFormat('fr-BE',{maximumFractionDigits:0}).format(value / 1000);
   const ratio = (value:number|null|undefined, revenue:number|null) => value === null || value === undefined || revenue === null || revenue === 0 ? '—' : new Intl.NumberFormat('fr-BE',{style:'percent',maximumFractionDigits:1}).format(value / revenue);
   const rows:[string,(item:CompetitorHistory)=>string][] = [
     ['Nombre d’ETP', item => item.fte.toLocaleString('fr-BE',{maximumFractionDigits:1})],
     ['Chiffre d’affaires', item => amount(item.revenue)],
     ['Marchandises et approvisionnements', item => amount(item.purchases)],
-    ['Marge brute', item => amount(item.grossMargin)],
-    ['Marge brute · % du CA', item => ratio(item.grossMargin,item.revenue)],
+    ['Marge brute', item => amount(item.grossMargin ?? (item.revenue === null || item.otherIncome === null || item.otherIncome === undefined || item.purchases === null || item.purchases === undefined ? null : item.revenue + item.otherIncome + item.purchases))],
+    ['Marge brute · % du CA', item => { const grossMargin=item.grossMargin ?? (item.revenue === null || item.otherIncome === null || item.otherIncome === undefined || item.purchases === null || item.purchases === undefined ? null : item.revenue + item.otherIncome + item.purchases); return ratio(grossMargin,item.revenue); }],
     ['Frais de personnel', item => amount(item.staffCosts)],
     ['Frais de personnel · % du CA', item => ratio(item.staffCosts,item.revenue)],
     ['Services et biens divers', item => amount(item.services)],
