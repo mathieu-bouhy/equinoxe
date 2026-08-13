@@ -3,7 +3,7 @@ import type { Company, CompanyAccess, DashboardDefinition, HistoricalAccountBala
 import { JsonFile } from './json-file';
 
 const status=z.enum(['active','inactive']);
-const user=z.object({id:z.string(),name:z.string(),email:z.string().email(),role:z.enum(['admin','viewer']),status,passwordHash:z.string(),passwordSalt:z.string(),createdAt:z.string(),updatedAt:z.string(),lastLoginAt:z.string().nullable()});
+const user=z.object({id:z.string(),name:z.string(),email:z.string().email(),role:z.enum(['admin','viewer']),status,analysisAccess:z.array(z.string()).default([]),passwordHash:z.string(),passwordSalt:z.string(),createdAt:z.string(),updatedAt:z.string(),lastLoginAt:z.string().nullable()});
 const company=z.object({id:z.string(),slug:z.string(),name:z.string(),status,connectorType:z.enum(['odoo','rest','none']),createdAt:z.string(),updatedAt:z.string()});
 const access=z.object({userId:z.string(),companyId:z.string(),createdAt:z.string()});
 const dashboard=z.object({id:z.string(),companyId:z.string(),slug:z.string(),label:z.string(),order:z.number(),status});
@@ -27,7 +27,7 @@ const displayOrder=['Chiffre d’affaires','Marchandises','Marge brute','Sous-tr
 export class Store {
   users;companies;access;dashboards;integrations;pnlSections;pnlSubsections;historicalBalances;reportSettings;
   constructor(dir:string){
-    this.users=new JsonFile<User>(dir,'users.json',z.array(user),()=>[]);
+    this.users=new JsonFile<User>(dir,'users.json',z.array(user) as unknown as z.ZodType<User[]>,()=>[]);
     this.companies=new JsonFile<Company>(dir,'companies.json',z.array(company),()=>[]);
     this.access=new JsonFile<CompanyAccess>(dir,'company-access.json',z.array(access),()=>[]);
     this.dashboards=new JsonFile<DashboardDefinition>(dir,'dashboards.json',z.array(dashboard),()=>[]);

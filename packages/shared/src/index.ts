@@ -1,7 +1,7 @@
 export type Role = 'admin' | 'viewer';
 export type Status = 'active' | 'inactive';
 export interface Company { id:string; slug:string; name:string; status:Status; connectorType:'odoo'|'rest'|'none'; createdAt:string; updatedAt:string }
-export interface User { id:string; name:string; email:string; role:Role; status:Status; passwordHash:string; passwordSalt:string; createdAt:string; updatedAt:string; lastLoginAt:string|null }
+export interface User { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; passwordHash:string; passwordSalt:string; createdAt:string; updatedAt:string; lastLoginAt:string|null }
 export interface CompanyAccess { userId:string; companyId:string; createdAt:string }
 export interface DashboardDefinition { id:string; companyId:string; slug:string; label:string; order:number; status:Status }
 export interface IntegrationMetadata { id:string; companyId:string; provider:'odoo'|'rest'; status:'connected'|'disconnected'|'not_configured'; baseUrl:string|null; database:string|null; lastTestAt:string|null; lastError:string|null; managedByEnvironment:boolean }
@@ -26,6 +26,6 @@ export interface BalanceLine { key:string; label:string; values:Record<string,nu
 export interface BalanceReport { years:number[]; assets:BalanceLine[]; liabilities:BalanceLine[]; generatedAt:string; source:'odoo' }
 export interface CashFlowLine { key:string; label:string; values:Record<string,number>; detail?:string }
 export interface CashFlowReport { years:number[]; lines:CashFlowLine[]; generatedAt:string; source:'odoo' }
-export interface PublicUser { id:string; name:string; email:string; role:Role; status:Status; createdAt:string; updatedAt:string; lastLoginAt:string|null }
+export interface PublicUser { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; createdAt:string; updatedAt:string; lastLoginAt:string|null }
 export const toPublicUser = ({passwordHash:_hash,passwordSalt:_salt,...user}:User):PublicUser => user;
 export type ApiResponse<T>={data:T}|{error:{code:string;message:string}};

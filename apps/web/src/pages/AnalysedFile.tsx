@@ -1,7 +1,11 @@
 // @ts-nocheck
 import { Fragment, useState } from 'react';
+import { Navigate, useOutletContext } from 'react-router-dom';
+import type { PublicUser } from '@equinoxe/shared';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, FileText, Sigma } from 'lucide-react';
 import { Button, Card, PageHeader } from '../components/ui';
+import { api } from '../services/api';
 import { MedipostDossierAnalysis } from './MedipostAnalysis';
 import './finance.css';
 import './balance.css';
@@ -52,6 +56,11 @@ const report: ReportLine[] = [
 ];
 
 export function MedipostFile() {
+  const {me}=useOutletContext<{me:PublicUser}>();
+  if(me.role!=='admin'&&!me.analysisAccess.includes('medipost'))return <Navigate to="/sans-acces" replace/>;
+  const access=useQuery({queryKey:['analysed-file','medipost'],queryFn:()=>api.analysedFile('medipost')});
+  if(access.isLoading)return <div className="state">Vérification de l’accès au dossier…</div>;
+  if(access.error)return <Navigate to="/sans-acces" replace/>;
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [percentages, setPercentages] = useState(false);
   const [view, setView] = useState<'pnl'|'balance'|'assumptions'|'analysis'>('pnl');
