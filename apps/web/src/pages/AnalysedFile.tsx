@@ -169,8 +169,10 @@ function MedipostBusinessPlan({ assumptions }: { assumptions: BusinessAssumption
     const financialIncome = projection('Produits financiers', year);
     const openingDebt = Math.max(0, assumptions.loanAmount - (year - 2026) * (assumptions.loanAmount / assumptions.loanYears));
     const financialCharges = -openingDebt * assumptions.loanRate;
-    const grossMargin = revenue[year] + otherIncome + purchases;
-    const ebitda = grossMargin + services + rentDifference + outgoingExecutiveSalary + incomingExecutiveSalary + staff + otherCharges;
+    // Keep the forecast comparable with the BNB/PDF presentation: the gross
+    // margin includes the services and goods charges as in the realised years.
+    const grossMargin = revenue[year] + otherIncome + purchases + services + rentDifference;
+    const ebitda = grossMargin + outgoingExecutiveSalary + incomingExecutiveSalary + staff + otherCharges;
     const ebit = ebitda + depreciation;
     const preTax = ebit + financialIncome + financialCharges;
     const tax = preTax > 0 ? projection('Impôts sur le résultat', year) : 0;
@@ -178,7 +180,7 @@ function MedipostBusinessPlan({ assumptions }: { assumptions: BusinessAssumption
       'Chiffre d’affaires': { ...projected['Chiffre d’affaires'], [year]: revenue[year] }, 'Autres produits d’exploitation': { ...projected['Autres produits d’exploitation'], [year]: otherIncome }, 'Marchandises et approvisionnements': { ...projected['Marchandises et approvisionnements'], [year]: purchases }, 'Marge brute': { ...projected['Marge brute'], [year]: grossMargin }, 'Services et biens divers': { ...projected['Services et biens divers'], [year]: services }, 'Différence de loyer': { ...projected['Différence de loyer'], [year]: rentDifference }, 'Salaire ancien dirigeant': { ...projected['Salaire ancien dirigeant'], [year]: outgoingExecutiveSalary }, 'Salaire nouveau dirigeant': { ...projected['Salaire nouveau dirigeant'], [year]: incomingExecutiveSalary }, 'Frais de personnel': { ...projected['Frais de personnel'], [year]: staff }, 'Autres charges d’exploitation': { ...projected['Autres charges d’exploitation'], [year]: otherCharges }, EBITDA: { ...projected.EBITDA, [year]: ebitda }, 'Amortissements et réductions de valeur': { ...projected['Amortissements et réductions de valeur'], [year]: depreciation }, 'Résultat d’exploitation (EBIT)': { ...projected['Résultat d’exploitation (EBIT)'], [year]: ebit }, 'Produits financiers': { ...projected['Produits financiers'], [year]: financialIncome }, 'Charges financières': { ...projected['Charges financières'], [year]: financialCharges }, 'Résultat avant impôts': { ...projected['Résultat avant impôts'], [year]: preTax }, 'Impôts sur le résultat': { ...projected['Impôts sur le résultat'], [year]: tax }, 'Résultat de l’exercice': { ...projected['Résultat de l’exercice'], [year]: preTax + tax },
     });
   });
-  const planLines = ['Chiffre d’affaires', 'Autres produits d’exploitation', 'Marchandises et approvisionnements', 'Marge brute', 'Services et biens divers', 'Différence de loyer', 'Salaire ancien dirigeant', 'Salaire nouveau dirigeant', 'Frais de personnel', 'Autres charges d’exploitation', 'EBITDA', 'Amortissements et réductions de valeur', 'Résultat d’exploitation (EBIT)', 'Produits financiers', 'Charges financières', 'Résultat avant impôts', 'Impôts sur le résultat', 'Résultat de l’exercice'];
+  const planLines = ['Chiffre d’affaires', 'Autres produits d’exploitation', 'Marchandises et approvisionnements', 'Services et biens divers', 'Différence de loyer', 'Marge brute', 'Salaire ancien dirigeant', 'Salaire nouveau dirigeant', 'Frais de personnel', 'Autres charges d’exploitation', 'EBITDA', 'Amortissements et réductions de valeur', 'Résultat d’exploitation (EBIT)', 'Produits financiers', 'Charges financières', 'Résultat avant impôts', 'Impôts sur le résultat', 'Résultat de l’exercice'];
   const calculated = new Set(['Marge brute', 'EBITDA', 'Résultat d’exploitation (EBIT)', 'Résultat avant impôts', 'Résultat de l’exercice']);
   const allYears = [2023, 2024, 2025, 2026, 2027, 2028] as const;
   const businessPlanOnlyLines = new Set(['Différence de loyer', 'Salaire ancien dirigeant', 'Salaire nouveau dirigeant']);
