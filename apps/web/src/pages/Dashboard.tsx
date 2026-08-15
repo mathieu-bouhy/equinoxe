@@ -64,33 +64,22 @@ function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowRepor
   const cash = report.closingCash ?? resolvedBalance?.assets.find(line => line.key === 'cash')?.values ?? {};
   const cashAccounts = nonZero(resolvedBalance?.assets.find(line => line.key === 'cash')?.accounts.map(account => ({ label: account.label, code: account.code, values: account.values })) ?? []);
   const free = report.lines.find(line => line.key === 'free-cash-flow')?.values ?? {};
-  const netResult = report.lines.find(line => line.key === 'net-result')?.values ?? {};
-  const debt = resolvedBalance?.liabilities.find(line => line.key === 'financial-debt')?.values ?? {};
-  const equity = resolvedBalance?.liabilities.find(line => line.key === 'equity')?.values ?? {};
   const openingCash = report.openingCash ?? values((_year, index) => index === 0 ? 0 : cash[String(report.years[index - 1])] ?? 0);
-  const cashMovement = values((year, index) => index === 0 ? 0 : (cash[String(year)] ?? 0) - (cash[String(report.years[index - 1])] ?? 0));
-  const newDebt = values((year, index) => index === 0 ? 0 : Math.max(0, (debt[String(year)] ?? 0) - (debt[String(report.years[index - 1])] ?? 0)));
-  const capitalMovements = values((year, index) => index === 0 ? 0 : ((equity[String(year)] ?? 0) - (equity[String(report.years[index - 1])] ?? 0)) - (netResult[String(year)] ?? 0));
-  const shareholderDistributions = values((year, index) => index === 0 ? 0 : Math.min(0, capitalMovements[String(year)] ?? 0));
-  const otherMovements = values((year, index) => index === 0 ? 0 : (cashMovement[String(year)] ?? 0) - (free[String(year)] ?? 0) - (shareholderDistributions[String(year)] ?? 0));
-  const otherCapitalMovements = values((year) => (capitalMovements[String(year)] ?? 0) - (shareholderDistributions[String(year)] ?? 0));
-  const unexplainedOtherMovements = values((year) => (otherMovements[String(year)] ?? 0) - (newDebt[String(year)] ?? 0) - (otherCapitalMovements[String(year)] ?? 0));
+  const shareholderDistributionDetails = nonZero(report.accountDetails?.distributions ?? []);
+  const shareholderDistributions = Object.fromEntries(report.years.map(year => [String(year), shareholderDistributionDetails.reduce((sum, account) => sum + (account.values[String(year)] ?? 0), 0)]));
+  // Keep a control difference visible instead of inventing an explanation from equity movements.
+  const reconciliationGap = values(year => (cash[String(year)] ?? 0) - (openingCash[String(year)] ?? 0) - (free[String(year)] ?? 0) - (shareholderDistributions[String(year)] ?? 0));
   const reconciliation = [
     { key: 'cash-opening', label: 'Trésorerie de début d’année', values: openingCash },
     { key: 'cash-free-flow', label: 'Cash-flow libre après dette', values: free },
-    { key: 'cash-distributions', label: '− Distributions aux actionnaires', values: shareholderDistributions },
-    { key: 'cash-other', label: 'Autres mouvements / réconciliation', values: otherMovements },
+    { key: 'cash-distributions', label: '− Distributions aux actionnaires (affectation du résultat)', values: shareholderDistributions },
+    { key: 'cash-gap', label: 'Écart de réconciliation à documenter', values: reconciliationGap },
     { key: 'cash-ending', label: 'Trésorerie de fin d’année', values: cash },
   ];
   const reconciliationDetails: Record<string, CashDetail[]> = {
     'cash-opening': cashAccounts,
     'cash-ending': cashAccounts,
-    'cash-distributions': [{ code: 'CP', label: 'Mouvements négatifs de capitaux propres hors résultat', values: shareholderDistributions }],
-    'cash-other': [
-      { code: 'dette', label: 'Nouveaux financements bancaires hors cash-flow libre après dette', values: newDebt },
-      { code: 'CP', label: 'Apports et autres mouvements positifs de capitaux propres', values: otherCapitalMovements },
-      { code: '±', label: 'Solde des autres mouvements hors cash-flow', values: unexplainedOtherMovements },
-    ],
+    'cash-distributions': shareholderDistributionDetails,
   };
 
   return <Card className="cash-flow-card">
@@ -102,15 +91,14 @@ function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowRepor
         return <Fragment key={line.key}><tr className={/Cash-flow/.test(line.label) ? 'calculation-row key-calculation' : ''}><td>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} comptes</small></button> : <span>{line.label}{line.detail && <small className="cash-info" title={line.detail}>i</small>}</span>}</td>{report.years.map(year => <td key={year}>{kAmount(line.values[String(year)] ?? 0)}</td>)}</tr>{expanded && accounts.map(account => <tr className={`account-row ${account.excluded?'non-cash-row':''}`} key={`${line.key}-${account.code}`}><td><em>{account.code}</em>{account.label}{account.excluded&&<small>Opération non monétaire · exclue du CapEx</small>}</td>{report.years.map(year => <td key={year}>{kAmount(account.values[String(year)] ?? 0)}</td>)}</tr>)}</Fragment>;
       })}
     </tbody></table></div>
-    <section className="cash-reconciliation"><h3>Réconciliation de la trésorerie · décembre à décembre</h3><p>Trésorerie de début + cash-flow libre après dette − distributions + autres mouvements = trésorerie de fin.</p>
+    <section className="cash-reconciliation"><h3>Réconciliation de la trésorerie · décembre à décembre</h3><p>Trésorerie de début + cash-flow libre après dette + distributions comptabilisées = trésorerie de fin. L’écart reste explicite tant qu’il n’est pas justifié par des comptes.</p><div className="report-table"><table className="report-matrix cash-flow-matrix reconciliation-matrix"><thead><tr><th>Rubrique</th>{report.years.map(year=><th key={year}>{year}</th>)}</tr></thead><tbody>
       {reconciliation.map(line => {
         const expanded = open.has(line.key);
         const accounts = reconciliationDetails[line.key] ?? [];
-        const accountLabel = ['cash-other', 'cash-distributions'].includes(line.key) ? 'éléments de calcul' : 'comptes';
-        return <Fragment key={line.key}><div className={line.key === 'cash-ending' ? 'cash-reconciliation-total' : ''}>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} {accountLabel}</small></button> : <span>{line.label}</span>}{report.years.map(year => <strong key={year}>{kAmount(line.values[String(year)] ?? 0)}</strong>)}</div>{expanded && accounts.map(account => <div className="cash-reconciliation-account" key={`${line.key}-${account.code}-${account.label}`}><span><em>{account.code}</em>{account.label}</span>{report.years.map(year => <strong key={year}>{kAmount(account.values[String(year)] ?? 0)}</strong>)}</div>)}</Fragment>;
+        return <Fragment key={line.key}><tr className={line.key === 'cash-ending' ? 'calculation-row key-calculation' : line.key === 'cash-gap' ? 'reconciliation-gap' : ''}><td>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} comptes</small></button> : <span>{line.label}</span>}</td>{report.years.map(year => <td key={year}>{kAmount(line.values[String(year)] ?? 0)}</td>)}</tr>{expanded && accounts.map(account => <tr className="account-row" key={`${line.key}-${account.code}-${account.label}`}><td><em>{account.code}</em>{account.label}</td>{report.years.map(year => <td key={year}>{kAmount(account.values[String(year)] ?? 0)}</td>)}</tr>)}</Fragment>;
       })}
-    </section>
-    <p className="report-note">Le cash-flow libre après dette n’est jamais repris dans « autres mouvements ». Cette ligne ne détaille que les flux hors cash-flow ; les distributions correspondent aux mouvements négatifs de capitaux propres hors résultat.</p>
+    </tbody></table></div></section>
+    <p className="report-note">Les distributions proviennent exclusivement des comptes d’affectation du résultat 694. Aucun mouvement de capitaux propres n’est déduit automatiquement. Un écart de réconciliation n’est pas assimilé à une distribution.</p>
   </Card>;
 }
 

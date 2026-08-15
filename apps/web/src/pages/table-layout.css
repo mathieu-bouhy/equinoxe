@@ -40,6 +40,12 @@
   font-style: normal;
 }
 
+.reconciliation-matrix .reconciliation-gap td {
+  background: #f4f1ed;
+  color: #766d64;
+  font-style: italic;
+}
+
 @media (max-width: 700px) {
   .report-matrix th:not(:first-child),
   .report-matrix td:not(:first-child) {
