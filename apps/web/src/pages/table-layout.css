@@ -1,0 +1,35 @@
+/* Shared reporting grid: equal measure for every numerical column. */
+.report-matrix th:not(:first-child),
+.report-matrix td:not(:first-child) {
+  width: 116px;
+  min-width: 116px;
+  text-align: right;
+}
+
+/* In the BFR, amount is primary, change is secondary and the ratio is quiet. */
+.bfr-card .report-matrix tbody td:nth-child(3n + 2),
+.bfr-card .report-matrix tfoot td:nth-child(3n + 2) {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.bfr-card .report-matrix tbody td:nth-child(3n),
+.bfr-card .report-matrix tfoot td:nth-child(3n) {
+  color: #5d4937;
+}
+
+.bfr-card .report-matrix tbody td:nth-child(3n + 1),
+.bfr-card .report-matrix tfoot td:nth-child(3n + 1) {
+  background: #fffdf8;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .report-matrix th:not(:first-child),
+  .report-matrix td:not(:first-child) {
+    width: 98px;
+    min-width: 98px;
+  }
+}

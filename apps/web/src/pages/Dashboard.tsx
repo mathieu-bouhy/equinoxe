@@ -6,7 +6,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import type { AccountingEntry, BalanceLine, BalanceReport, BfrReport, CashFlowReport, Company, ProfitLossAccount, ProfitLossLtmReport, ProfitLossMonthlyReport, ProfitLossReport, PublicUser, ReportSettings } from '@equinoxe/shared';
 import { Button, Card, ErrorState, LoadingState, Modal, PageHeader } from '../components/ui';
 import { api } from '../services/api';
-import './finance.css'; import './drilldown.css'; import './entries.css'; import './balance.css';
+import './finance.css'; import './drilldown.css'; import './entries.css'; import './balance.css'; import './table-layout.css';
 
 type Context={me:PublicUser;companies:Company[];current:Company};
 type Selection={id:string;code:string;label:string;year:number};
