@@ -26,6 +26,20 @@
   font-weight: 600;
 }
 
+.report-matrix .non-cash-row td {
+  background: #f4f1ed !important;
+  color: #8a8178;
+  font-style: italic;
+}
+
+.report-matrix .non-cash-row td:first-child small {
+  display: inline-block;
+  margin-left: 8px;
+  color: #8a8178;
+  font-size: 10px;
+  font-style: normal;
+}
+
 @media (max-width: 700px) {
   .report-matrix th:not(:first-child),
   .report-matrix td:not(:first-child) {
