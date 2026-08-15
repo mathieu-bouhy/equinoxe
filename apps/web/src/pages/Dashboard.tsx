@@ -72,7 +72,7 @@ function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowRepor
   const reconciliation = [
     { key: 'cash-opening', label: 'Trésorerie de début d’année', values: openingCash },
     { key: 'cash-free-flow', label: 'Cash-flow libre après dette', values: free },
-    { key: 'cash-distributions', label: '− Distributions aux actionnaires (affectation du résultat)', values: shareholderDistributions },
+    { key: 'cash-distributions', label: '− Dividendes effectivement décaissés', values: shareholderDistributions },
     { key: 'cash-gap', label: 'Écart de réconciliation à documenter', values: reconciliationGap },
     { key: 'cash-ending', label: 'Trésorerie de fin d’année', values: cash },
   ];
@@ -98,7 +98,7 @@ function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowRepor
         return <Fragment key={line.key}><tr className={line.key === 'cash-ending' ? 'calculation-row key-calculation' : line.key === 'cash-gap' ? 'reconciliation-gap' : ''}><td>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} comptes</small></button> : <span>{line.label}</span>}</td>{report.years.map(year => <td key={year}>{kAmount(line.values[String(year)] ?? 0)}</td>)}</tr>{expanded && accounts.map(account => <tr className="account-row" key={`${line.key}-${account.code}-${account.label}`}><td><em>{account.code}</em>{account.label}</td>{report.years.map(year => <td key={year}>{kAmount(account.values[String(year)] ?? 0)}</td>)}</tr>)}</Fragment>;
       })}
     </tbody></table></div></section>
-    <p className="report-note">Les distributions proviennent exclusivement des comptes d’affectation du résultat 694. Aucun mouvement de capitaux propres n’est déduit automatiquement. Un écart de réconciliation n’est pas assimilé à une distribution.</p>
+    <p className="report-note">Les dividendes sont retenus uniquement lorsqu’une sortie de banque ou caisse est comptabilisée. Les écritures d’affectation 694 → 471, sans mouvement de trésorerie, sont exclues.</p>
   </Card>;
 }
 
