@@ -67,19 +67,33 @@ export class Store {
     const bfr=await this.bfrSections.read();
     if(!bfr.some(section=>section.companyId===gimi.id)){
       const defaults:Array<[string,'add'|'subtract',string[]]>=[
-        ['Stocks et encours','add',['30','31','32','33','34','35','36','37','39']],
+        ['Stocks','add',['30','32','33','34','35','36','39']],
+        ['En cours','add',['31','37']],
         ['Créances commerciales et avances fournisseurs','add',['40']],
         ['Autres créances d’exploitation','add',['41']],
         ['Régularisations actives','add',['490','491']],
         ['Dettes fournisseurs','subtract',['44']],
         ['Dettes fiscales et sociales d’exploitation','subtract',['45']],
-        ['Avances clients et charges à imputer','subtract',['46']],
-        ['Autres dettes d’exploitation','subtract',['48']],
-        ['Régularisations passives','subtract',['492','493']],
+        ['Avances clients, autres dettes et régularisations passives','subtract',['46','48','492','493']],
       ];
       bfr.push(...defaults.map(([label,sign,prefixes],order)=>({id:crypto.randomUUID(),companyId:gimi.id,label,sign,prefixes,order,createdAt:now,updatedAt:now})));
       await this.bfrSections.write(bfr);
     }
+    const legacyStock=bfr.find(section=>section.companyId===gimi.id&&section.label==='Stocks et encours');
+    if(legacyStock){
+      legacyStock.label='Stocks';legacyStock.prefixes=['30','32','33','34','35','36','39'];legacyStock.updatedAt=now;
+      for(const section of bfr.filter(section=>section.companyId===gimi.id&&section.id!==legacyStock.id&&section.order>legacyStock.order))section.order+=1;
+      bfr.push({id:crypto.randomUUID(),companyId:gimi.id,label:'En cours',sign:'add',prefixes:['31','37'],order:legacyStock.order+1,createdAt:now,updatedAt:now});
+    }
+    const legacyPayables=bfr.filter(section=>section.companyId===gimi.id&&['Avances clients et charges à imputer','Autres dettes d’exploitation','Régularisations passives'].includes(section.label));
+    if(legacyPayables.length){
+      const first=legacyPayables.sort((a,b)=>a.order-b.order)[0];
+      first.label='Avances clients, autres dettes et régularisations passives';first.prefixes=['46','48','492','493'];first.updatedAt=now;
+      const removed=new Set(legacyPayables.slice(1).map(section=>section.id));
+      const next=bfr.filter(section=>!removed.has(section.id));
+      next.filter(section=>section.companyId===gimi.id).sort((a,b)=>a.order-b.order).forEach((section,order)=>section.order=order);
+      await this.bfrSections.write(next);
+    }else if(legacyStock){await this.bfrSections.write(bfr);}
     const revenue=sections.find(s=>s.companyId===gimi.id&&s.kind==='accounts'&&s.prefixes.includes('70'));
     const subs=await this.pnlSubsections.read();
     if(revenue&&!subs.some(s=>s.companyId===gimi.id)){
