@@ -30,7 +30,7 @@ export interface BfrSection { id:string; companyId:string; label:string; sign:Bf
 export interface BfrLine { id:string; label:string; sign:BfrSign; values:Record<string,number>; variations:Record<string,number|null>; accounts:BalanceAccount[] }
 export interface BfrReport { years:number[]; lines:BfrLine[]; total:Record<string,number>; variation:Record<string,number|null>; generatedAt:string; source:'odoo' }
 export interface CashFlowLine { key:string; label:string; values:Record<string,number>; detail?:string }
-export interface CashFlowReport { years:number[]; lines:CashFlowLine[]; generatedAt:string; source:'odoo' }
+export interface CashFlowReport { years:number[]; lines:CashFlowLine[]; openingCash?:Record<string,number>; closingCash?:Record<string,number>; generatedAt:string; source:'odoo' }
 export interface PublicUser { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; createdAt:string; updatedAt:string; lastLoginAt:string|null }
 export const toPublicUser = ({passwordHash:_hash,passwordSalt:_salt,...user}:User):PublicUser => user;
 export type ApiResponse<T>={data:T}|{error:{code:string;message:string}};

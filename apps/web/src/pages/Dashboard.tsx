@@ -60,13 +60,13 @@ function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowRepor
     capex: balanceChanges('fixed-assets'),
     'debt-repayment': balanceChanges('financial-debt'),
   };
-  const cash = resolvedBalance?.assets.find(line => line.key === 'cash')?.values ?? {};
+  const cash = report.closingCash ?? resolvedBalance?.assets.find(line => line.key === 'cash')?.values ?? {};
   const cashAccounts = resolvedBalance?.assets.find(line => line.key === 'cash')?.accounts.map(account => ({ label: account.label, code: account.code, values: account.values })) ?? [];
   const free = report.lines.find(line => line.key === 'free-cash-flow')?.values ?? {};
   const netResult = report.lines.find(line => line.key === 'net-result')?.values ?? {};
   const debt = resolvedBalance?.liabilities.find(line => line.key === 'financial-debt')?.values ?? {};
   const equity = resolvedBalance?.liabilities.find(line => line.key === 'equity')?.values ?? {};
-  const openingCash = values((_year, index) => index === 0 ? 0 : cash[String(report.years[index - 1])] ?? 0);
+  const openingCash = report.openingCash ?? values((_year, index) => index === 0 ? 0 : cash[String(report.years[index - 1])] ?? 0);
   const cashMovement = values((year, index) => index === 0 ? 0 : (cash[String(year)] ?? 0) - (cash[String(report.years[index - 1])] ?? 0));
   const newDebt = values((year, index) => index === 0 ? 0 : Math.max(0, (debt[String(year)] ?? 0) - (debt[String(report.years[index - 1])] ?? 0)));
   const capitalMovements = values((year, index) => index === 0 ? 0 : ((equity[String(year)] ?? 0) - (equity[String(report.years[index - 1])] ?? 0)) - (netResult[String(year)] ?? 0));
