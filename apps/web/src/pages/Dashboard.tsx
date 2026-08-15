@@ -62,33 +62,25 @@ function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowRepor
   const cashMovement = values((year, index) => index === 0 ? 0 : (cash[String(year)] ?? 0) - (cash[String(report.years[index - 1])] ?? 0));
   const newDebt = values((year, index) => index === 0 ? 0 : Math.max(0, (debt[String(year)] ?? 0) - (debt[String(report.years[index - 1])] ?? 0)));
   const capitalMovements = values((year, index) => index === 0 ? 0 : ((equity[String(year)] ?? 0) - (equity[String(report.years[index - 1])] ?? 0)) - (netResult[String(year)] ?? 0));
-  const otherMovements = values((year, index) => index === 0 ? 0 : (cashMovement[String(year)] ?? 0) - (free[String(year)] ?? 0) - (newDebt[String(year)] ?? 0) - (capitalMovements[String(year)] ?? 0));
+  const shareholderDistributions = values((year, index) => index === 0 ? 0 : Math.min(0, capitalMovements[String(year)] ?? 0));
+  const otherMovements = values((year, index) => index === 0 ? 0 : (cashMovement[String(year)] ?? 0) - (free[String(year)] ?? 0) - (shareholderDistributions[String(year)] ?? 0));
+  const otherCapitalMovements = values((year) => (capitalMovements[String(year)] ?? 0) - (shareholderDistributions[String(year)] ?? 0));
+  const unexplainedOtherMovements = values((year) => (otherMovements[String(year)] ?? 0) - (newDebt[String(year)] ?? 0) - (otherCapitalMovements[String(year)] ?? 0));
   const reconciliation = [
     { key: 'cash-opening', label: 'Trésorerie de début d’année', values: openingCash },
     { key: 'cash-free-flow', label: 'Cash-flow libre après dette', values: free },
-    { key: 'cash-new-debt', label: '+ Nouveaux financements bancaires', values: newDebt },
-    { key: 'cash-capital-movements', label: '+ / − Dividendes, apports et mouvements de capitaux propres', values: capitalMovements },
+    { key: 'cash-distributions', label: '− Distributions aux actionnaires', values: shareholderDistributions },
     { key: 'cash-other', label: 'Autres mouvements / réconciliation', values: otherMovements },
     { key: 'cash-ending', label: 'Trésorerie de fin d’année', values: cash },
   ];
   const reconciliationDetails: Record<string, CashDetail[]> = {
     'cash-opening': cashAccounts,
     'cash-ending': cashAccounts,
-    'cash-new-debt': balanceChanges('financial-debt').map(account => ({
-      ...account,
-      values: values((year) => Math.max(0, account.values[String(year)] ?? 0)),
-    })),
-    'cash-capital-movements': [
-      ...balanceChanges('equity'),
-      { code: '− résultat', label: 'Moins le résultat après impôts déjà intégré aux capitaux propres', values: values((year) => -(netResult[String(year)] ?? 0)) },
-      { code: '=', label: 'Dividendes, apports et autres mouvements de capitaux propres', values: capitalMovements },
-    ],
+    'cash-distributions': [{ code: 'CP', label: 'Mouvements négatifs de capitaux propres hors résultat', values: shareholderDistributions }],
     'cash-other': [
-      { code: 'Δ trés.', label: 'Variation de trésorerie constatée (fin − début)', values: cashMovement },
-      { code: '− FCF', label: 'Moins le cash-flow libre après dette', values: values((year) => -(free[String(year)] ?? 0)) },
-      { code: '− dette', label: 'Moins les nouveaux financements bancaires', values: values((year) => -(newDebt[String(year)] ?? 0)) },
-      { code: '− CP', label: 'Moins les dividendes, apports et mouvements de capitaux propres', values: values((year) => -(capitalMovements[String(year)] ?? 0)) },
-      { code: '=', label: 'Autres mouvements / réconciliation', values: otherMovements },
+      { code: 'dette', label: 'Nouveaux financements bancaires hors cash-flow libre après dette', values: newDebt },
+      { code: 'CP', label: 'Apports et autres mouvements positifs de capitaux propres', values: otherCapitalMovements },
+      { code: '±', label: 'Solde des autres mouvements hors cash-flow', values: unexplainedOtherMovements },
     ],
   };
 
@@ -101,15 +93,15 @@ function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowRepor
         return <Fragment key={line.key}><tr className={/Cash-flow/.test(line.label) ? 'calculation-row key-calculation' : ''}><td>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} comptes</small></button> : <span>{line.label}{line.detail && <small className="cash-info" title={line.detail}>i</small>}</span>}</td>{report.years.map(year => <td key={year}>{kAmount(line.values[String(year)] ?? 0)}</td>)}</tr>{expanded && accounts.map(account => <tr className="account-row" key={`${line.key}-${account.code}`}><td><em>{account.code}</em>{account.label}</td>{report.years.map(year => <td key={year}>{kAmount(account.values[String(year)] ?? 0)}</td>)}</tr>)}</Fragment>;
       })}
     </tbody></table></div>
-    <section className="cash-reconciliation"><h3>Réconciliation de la trésorerie · décembre à décembre</h3><p>Chaque ligne est un flux : en les additionnant à la trésorerie de début, on obtient la trésorerie de fin. Ouvrez une ligne pour consulter son détail.</p>
+    <section className="cash-reconciliation"><h3>Réconciliation de la trésorerie · décembre à décembre</h3><p>Trésorerie de début + cash-flow libre après dette − distributions + autres mouvements = trésorerie de fin.</p>
       {reconciliation.map(line => {
         const expanded = open.has(line.key);
         const accounts = reconciliationDetails[line.key] ?? [];
-        const accountLabel = ['cash-other', 'cash-capital-movements'].includes(line.key) ? 'éléments de calcul' : 'comptes';
+        const accountLabel = ['cash-other', 'cash-distributions'].includes(line.key) ? 'éléments de calcul' : 'comptes';
         return <Fragment key={line.key}><div className={line.key === 'cash-ending' ? 'cash-reconciliation-total' : ''}>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} {accountLabel}</small></button> : <span>{line.label}</span>}{report.years.map(year => <strong key={year}>{kAmount(line.values[String(year)] ?? 0)}</strong>)}</div>{expanded && accounts.map(account => <div className="cash-reconciliation-account" key={`${line.key}-${account.code}-${account.label}`}><span><em>{account.code}</em>{account.label}</span>{report.years.map(year => <strong key={year}>{kAmount(account.values[String(year)] ?? 0)}</strong>)}</div>)}</Fragment>;
       })}
     </section>
-    <p className="report-note">Les « autres mouvements » restent un solde de réconciliation : ils complètent les flux identifiés pour arriver exactement à la trésorerie de clôture. Les dividendes ne sont isolés que s’ils se distinguent des autres mouvements de capitaux propres.</p>
+    <p className="report-note">Le cash-flow libre après dette n’est jamais repris dans « autres mouvements ». Cette ligne ne détaille que les flux hors cash-flow ; les distributions correspondent aux mouvements négatifs de capitaux propres hors résultat.</p>
   </Card>;
 }
 
