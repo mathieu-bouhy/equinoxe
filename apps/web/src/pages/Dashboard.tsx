@@ -26,7 +26,74 @@ function ReportSettingsControl({settings,editable,saving,onChange,percentages,on
 function BalanceSheet({companyId}:{companyId:string}){const balance=useQuery({queryKey:['balance',companyId],queryFn:()=>api.balanceSheet(companyId)}),cash=useQuery({queryKey:['cash-flow',companyId],queryFn:()=>api.cashFlow(companyId)});if(balance.isLoading||cash.isLoading)return <LoadingState/>;if(balance.error||cash.error||!balance.data||!cash.data)return <ErrorState message="Impossible de charger le bilan et le pont de trésorerie."/>;return <div className="balance-dashboard"><BalanceTable report={balance.data}/><CashFlowBridge report={cash.data} balance={balance.data}/></div>}
 function BalanceTable({report}:{report:BalanceReport}){const [open,setOpen]=useState<Set<string>>(new Set()),toggle=(key:string)=>setOpen(current=>{const next=new Set(current);next.has(key)?next.delete(key):next.add(key);return next}),section=(title:string,lines:BalanceLine[])=><section className="balance-section"><h2>{title}</h2>{lines.map(line=><Fragment key={line.key}><div className="balance-line"><button className="drilldown-button" onClick={()=>toggle(line.key)} aria-expanded={open.has(line.key)}>{open.has(line.key)?<ChevronDown size={17}/>:<ChevronRight size={17}/>}<span>{line.label}</span><small>{line.accounts.length} comptes</small></button>{report.years.map(year=><strong key={year}>{kAmount(line.values[String(year)]??0)}</strong>)}</div>{open.has(line.key)&&line.accounts.map(account=><div className="balance-account" key={account.id}><span><em>{account.code}</em>{account.label}</span>{report.years.map(year=><span key={year}>{kAmount(account.values[String(year)]??0)}</span>)}</div>)}</Fragment>)}</section>;return <Card className="balance-card"><div className="profit-loss-heading"><div><p className="eyebrow">Bilan comptable</p><h2>Actif & passif</h2><p>Ouvrez une rubrique pour consulter tous les comptes qui la composent.</p></div><div className="balance-years">{report.years.map(year=><strong key={year}>{year}</strong>)}</div></div><div className="balance-columns">{section('Actif',report.assets)}{section('Passif',report.liabilities)}</div><p className="report-note">Montants en milliers d’euros · données générées le {new Date(report.generatedAt).toLocaleString('fr-BE')}.</p></Card>}
 type CashDetail={label:string;code?:string;values:Record<string,number>};
-function CashFlowBridge({report,balance,profitLoss}:{report:CashFlowReport;balance?:BalanceReport;profitLoss?:ProfitLossReport}){const {current}=useOutletContext<Context>(),localBalance=useQuery({queryKey:['balance',current.id],queryFn:()=>api.balanceSheet(current.id)}),localProfit=useQuery({queryKey:['profit-loss',current.id],queryFn:()=>api.profitLoss(current.id)}),resolvedBalance=balance??localBalance.data,resolvedProfit=profitLoss??localProfit.data,[open,setOpen]=useState<Set<string>>(new Set()),toggle=(key:string)=>setOpen(current=>{const next=new Set(current);next.has(key)?next.delete(key):next.add(key);return next});const pnlAccounts=(label:string)=>resolvedProfit?.lines.find(line=>line.label===label)?.accounts?.map(account=>({label:account.label,code:account.code,values:account.values}))??[];const balanceChanges=(key:string)=>resolvedBalance?.assets.concat(resolvedBalance.liabilities).find(line=>line.key===key)?.accounts.map(account=>({label:account.label,code:account.code,values:Object.fromEntries(report.years.map((year,index)=>[String(year),index===0?0:(account.values[String(year)]??0)-(account.values[String(report.years[index-1])]??0)]))}))??[];const details:Record<string,CashDetail[]>={'depreciation':pnlAccounts('Amortissements'),'interest':pnlAccounts('Financier'),'nwc':[...balanceChanges('inventory'),...balanceChanges('receivables'),...balanceChanges('suppliers'),...balanceChanges('tax-social')],'capex':balanceChanges('fixed-assets'),'debt-repayment':balanceChanges('financial-debt')};const cash=resolvedBalance?.assets.find(line=>line.key==='cash')?.values??{},cashAccounts=resolvedBalance?.assets.find(line=>line.key==='cash')?.accounts.map(account=>({label:account.label,code:account.code,values:account.values}))??[],free=report.lines.find(line=>line.key==='free-cash-flow')?.values??{},reconciliation=[{key:'cash-opening',label:'Trésorerie de début d’année',values:Object.fromEntries(report.years.map((year,index)=>[String(year),index===0?0:(cash[String(report.years[index-1])]??0)]))},{key:'cash-free-flow',label:'Cash-flow libre après dette',values:free},{key:'cash-ending',label:'Trésorerie de fin d’année',values:cash},{key:'cash-other',label:'Autres mouvements / réconciliation',values:Object.fromEntries(report.years.map((year,index)=>[String(year),index===0?0:(cash[String(year)]??0)-(cash[String(report.years[index-1])]??0)-(free[String(year)]??0)]))}];return <Card className="cash-flow-card"><div className="profit-loss-heading"><div><p className="eyebrow">Capacité de financement</p><h2>Pont de trésorerie</h2><p>Du bénéfice après impôts jusqu’au cash-flow réellement libre après dette.</p></div></div><div className="report-table"><table className="report-matrix cash-flow-matrix"><thead><tr><th>Rubrique</th>{report.years.map(year=><th key={year}>{year}</th>)}</tr></thead><tbody>{report.lines.map(line=>{const accounts=details[line.key]??[],expanded=open.has(line.key);return <Fragment key={line.key}><tr className={/Cash-flow/.test(line.label)?'calculation-row key-calculation':''}><td>{accounts.length?<button className="drilldown-button" onClick={()=>toggle(line.key)} aria-expanded={expanded}>{expanded?<ChevronDown size={17}/>:<ChevronRight size={17}/>}<span>{line.label}</span><small>{accounts.length} comptes</small></button>:<span>{line.label}{line.detail&&<small className="cash-info" title={line.detail}>i</small>}</span>}</td>{report.years.map(year=><td key={year}>{kAmount(line.values[String(year)]??0)}</td>)}</tr>{expanded&&accounts.map(account=><tr className="account-row" key={`${line.key}-${account.code}`}><td><em>{account.code}</em>{account.label}</td>{report.years.map(year=><td key={year}>{kAmount(account.values[String(year)]??0)}</td>)}</tr>)}</Fragment>})}</tbody></table></div><section className="cash-reconciliation"><h3>Réconciliation de la trésorerie · décembre à décembre</h3><p>Ouvrez le solde de clôture pour consulter les comptes de trésorerie qui le composent.</p>{reconciliation.map(line=>{const expanded=open.has(line.key),accounts=line.key==='cash-ending'||line.key==='cash-opening'?cashAccounts:[];return <Fragment key={line.key}><div className={line.key==='cash-ending'?'cash-reconciliation-total':''}>{accounts.length?<button className="drilldown-button" onClick={()=>toggle(line.key)} aria-expanded={expanded}>{expanded?<ChevronDown size={17}/>:<ChevronRight size={17}/>}<span>{line.label}</span><small>{accounts.length} comptes</small></button>:<span>{line.label}</span>}{report.years.map(year=><strong key={year}>{kAmount(line.values[String(year)]??0)}</strong>)}</div>{expanded&&accounts.map(account=><div className="cash-reconciliation-account" key={account.id}><span><em>{account.code}</em>{account.label}</span>{report.years.map(year=><strong key={year}>{kAmount(account.values[String(year)]??0)}</strong>)}</div>)}</Fragment>})}</section><p className="report-note">Ouvrez une ligne pour voir les comptes qui composent les variations de bilan ou les charges concernées.</p></Card>}
+function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowReport; balance?: BalanceReport; profitLoss?: ProfitLossReport }) {
+  const { current } = useOutletContext<Context>();
+  const localBalance = useQuery({ queryKey: ['balance', current.id], queryFn: () => api.balanceSheet(current.id) });
+  const localProfit = useQuery({ queryKey: ['profit-loss', current.id], queryFn: () => api.profitLoss(current.id) });
+  const resolvedBalance = balance ?? localBalance.data;
+  const resolvedProfit = profitLoss ?? localProfit.data;
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = (key: string) => setOpen(previous => {
+    const next = new Set(previous);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+  const values = (getter: (year: number, index: number) => number) => Object.fromEntries(report.years.map((year, index) => [String(year), getter(year, index)]));
+  const pnlAccounts = (label: string) => resolvedProfit?.lines.find(line => line.label === label)?.accounts?.map(account => ({ label: account.label, code: account.code, values: account.values })) ?? [];
+  const balanceChanges = (key: string) => resolvedBalance?.assets.concat(resolvedBalance.liabilities).find(line => line.key === key)?.accounts.map(account => ({
+    label: account.label,
+    code: account.code,
+    values: values((year, index) => index === 0 ? 0 : (account.values[String(year)] ?? 0) - (account.values[String(report.years[index - 1])] ?? 0)),
+  })) ?? [];
+  const details: Record<string, CashDetail[]> = {
+    depreciation: pnlAccounts('Amortissements'),
+    interest: pnlAccounts('Financier'),
+    nwc: [...balanceChanges('inventory'), ...balanceChanges('receivables'), ...balanceChanges('suppliers'), ...balanceChanges('tax-social')],
+    capex: balanceChanges('fixed-assets'),
+    'debt-repayment': balanceChanges('financial-debt'),
+  };
+  const cash = resolvedBalance?.assets.find(line => line.key === 'cash')?.values ?? {};
+  const cashAccounts = resolvedBalance?.assets.find(line => line.key === 'cash')?.accounts.map(account => ({ label: account.label, code: account.code, values: account.values })) ?? [];
+  const free = report.lines.find(line => line.key === 'free-cash-flow')?.values ?? {};
+  const openingCash = values((_year, index) => index === 0 ? 0 : cash[String(report.years[index - 1])] ?? 0);
+  const cashMovement = values((year, index) => index === 0 ? 0 : (cash[String(year)] ?? 0) - (cash[String(report.years[index - 1])] ?? 0));
+  const otherMovements = values((year, index) => index === 0 ? 0 : (cashMovement[String(year)] ?? 0) - (free[String(year)] ?? 0));
+  const reconciliation = [
+    { key: 'cash-opening', label: 'Trésorerie de début d’année', values: openingCash },
+    { key: 'cash-free-flow', label: 'Cash-flow libre après dette', values: free },
+    { key: 'cash-other', label: 'Autres mouvements / réconciliation', values: otherMovements },
+    { key: 'cash-ending', label: 'Trésorerie de fin d’année', values: cash },
+  ];
+  const reconciliationDetails: Record<string, CashDetail[]> = {
+    'cash-opening': cashAccounts,
+    'cash-ending': cashAccounts,
+    'cash-other': [
+      { code: 'Δ trés.', label: 'Variation de trésorerie constatée (fin − début)', values: cashMovement },
+      { code: '− FCF', label: 'Moins le cash-flow libre après dette', values: values((year) => -(free[String(year)] ?? 0)) },
+      { code: '=', label: 'Autres mouvements / réconciliation', values: otherMovements },
+    ],
+  };
+
+  return <Card className="cash-flow-card">
+    <div className="profit-loss-heading"><div><p className="eyebrow">Capacité de financement</p><h2>Pont de trésorerie</h2><p>Du bénéfice après impôts jusqu’au cash-flow réellement libre après dette.</p></div></div>
+    <div className="report-table"><table className="report-matrix cash-flow-matrix"><thead><tr><th>Rubrique</th>{report.years.map(year => <th key={year}>{year}</th>)}</tr></thead><tbody>
+      {report.lines.map(line => {
+        const accounts = details[line.key] ?? [];
+        const expanded = open.has(line.key);
+        return <Fragment key={line.key}><tr className={/Cash-flow/.test(line.label) ? 'calculation-row key-calculation' : ''}><td>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} comptes</small></button> : <span>{line.label}{line.detail && <small className="cash-info" title={line.detail}>i</small>}</span>}</td>{report.years.map(year => <td key={year}>{kAmount(line.values[String(year)] ?? 0)}</td>)}</tr>{expanded && accounts.map(account => <tr className="account-row" key={`${line.key}-${account.code}`}><td><em>{account.code}</em>{account.label}</td>{report.years.map(year => <td key={year}>{kAmount(account.values[String(year)] ?? 0)}</td>)}</tr>)}</Fragment>;
+      })}
+    </tbody></table></div>
+    <section className="cash-reconciliation"><h3>Réconciliation de la trésorerie · décembre à décembre</h3><p>Ouvrez une ligne pour consulter les comptes de trésorerie ou le calcul du solde de réconciliation.</p>
+      {reconciliation.map(line => {
+        const expanded = open.has(line.key);
+        const accounts = reconciliationDetails[line.key] ?? [];
+        const accountLabel = line.key === 'cash-other' ? 'éléments de calcul' : 'comptes';
+        return <Fragment key={line.key}><div className={line.key === 'cash-ending' ? 'cash-reconciliation-total' : ''}>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} {accountLabel}</small></button> : <span>{line.label}</span>}{report.years.map(year => <strong key={year}>{kAmount(line.values[String(year)] ?? 0)}</strong>)}</div>{expanded && accounts.map(account => <div className="cash-reconciliation-account" key={`${line.key}-${account.code}-${account.label}`}><span><em>{account.code}</em>{account.label}</span>{report.years.map(year => <strong key={year}>{kAmount(account.values[String(year)] ?? 0)}</strong>)}</div>)}</Fragment>;
+      })}
+    </section>
+    <p className="report-note">« Autres mouvements / réconciliation » est un solde calculé : variation de trésorerie constatée moins cash-flow libre après dette. Ce n’est pas un compte Odoo unique.</p>
+  </Card>;
+}
 
 function ProfitLoss({companyId,includeDraftInvoices,percentages,extrapolated=false}:{companyId:string;includeDraftInvoices:boolean;percentages:boolean;extrapolated?:boolean}){
   const [open,setOpen]=useState<Set<string>>(new Set()),[openYears,setOpenYears]=useState<Set<number>>(new Set()),[selection,setSelection]=useState<Selection|null>(null),[accountDetail,setAccountDetail]=useState<{label:string;accounts:ProfitLossAccount[]}|null>(null);
