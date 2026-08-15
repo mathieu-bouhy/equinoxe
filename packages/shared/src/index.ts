@@ -24,6 +24,11 @@ export interface ProfitLossLtmReport { periods:ProfitLossPeriod[]; lines:ProfitL
 export interface BalanceAccount { id:string; code:string; label:string; values:Record<string,number> }
 export interface BalanceLine { key:string; label:string; values:Record<string,number>; accounts:BalanceAccount[] }
 export interface BalanceReport { years:number[]; assets:BalanceLine[]; liabilities:BalanceLine[]; generatedAt:string; source:'odoo' }
+export type BfrSign = 'add'|'subtract';
+/** Configurable operating working-capital grouping. `subtract` denotes an operating liability. */
+export interface BfrSection { id:string; companyId:string; label:string; sign:BfrSign; prefixes:string[]; order:number; createdAt:string; updatedAt:string }
+export interface BfrLine { id:string; label:string; sign:BfrSign; values:Record<string,number>; variations:Record<string,number|null>; accounts:BalanceAccount[] }
+export interface BfrReport { years:number[]; lines:BfrLine[]; total:Record<string,number>; variation:Record<string,number|null>; generatedAt:string; source:'odoo' }
 export interface CashFlowLine { key:string; label:string; values:Record<string,number>; detail?:string }
 export interface CashFlowReport { years:number[]; lines:CashFlowLine[]; generatedAt:string; source:'odoo' }
 export interface PublicUser { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; createdAt:string; updatedAt:string; lastLoginAt:string|null }

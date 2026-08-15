@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Company, CompanyAccess, DashboardDefinition, HistoricalAccountBalance, IntegrationMetadata, ProfitLossSection, ProfitLossSubsection, ReportSettings, User } from '@equinoxe/shared';
+import type { BfrSection, Company, CompanyAccess, DashboardDefinition, HistoricalAccountBalance, IntegrationMetadata, ProfitLossSection, ProfitLossSubsection, ReportSettings, User } from '@equinoxe/shared';
 import { JsonFile } from './json-file';
 
 const status=z.enum(['active','inactive']);
@@ -12,6 +12,7 @@ const pnlSection=z.object({id:z.string(),companyId:z.string(),label:z.string(),k
 const pnlSubsection=z.object({id:z.string(),companyId:z.string(),parentSectionId:z.string(),label:z.string(),prefixes:z.array(z.string()),order:z.number(),createdAt:z.string(),updatedAt:z.string()});
 const historicalBalance=z.object({companyId:z.string(),accountCode:z.string(),label:z.string(),year:z.number().int(),amount:z.number(),importedAt:z.string(),sourceFile:z.string()});
 const reportSettings=z.object({companyId:z.string(),lastClosedMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),updatedAt:z.string()});
+const bfrSection=z.object({id:z.string(),companyId:z.string(),label:z.string(),sign:z.enum(['add','subtract']),prefixes:z.array(z.string().regex(/^\d{1,12}$/)),order:z.number(),createdAt:z.string(),updatedAt:z.string()});
 
 type CalculationSpec={label:string;terms:Array<[string,'add'|'subtract']>};
 const calculationSpecs:CalculationSpec[]=[
@@ -25,7 +26,7 @@ const calculationSpecs:CalculationSpec[]=[
 const displayOrder=['Chiffre d’affaires','Marchandises','Marge brute','Sous-traitance','Services et biens divers','Personnel','Charges d’exploitation','Produits d’exploitation','Coûts hors achats','EBITDA','Amortissements','Résultat d’exploitation','Financier','Résultat avant impôts','Impôts','Résultat après impôts'];
 
 export class Store {
-  users;companies;access;dashboards;integrations;pnlSections;pnlSubsections;historicalBalances;reportSettings;
+  users;companies;access;dashboards;integrations;pnlSections;pnlSubsections;historicalBalances;reportSettings;bfrSections;
   constructor(dir:string){
     this.users=new JsonFile<User>(dir,'users.json',z.array(user) as unknown as z.ZodType<User[]>,()=>[]);
     this.companies=new JsonFile<Company>(dir,'companies.json',z.array(company),()=>[]);
@@ -36,13 +37,14 @@ export class Store {
     this.pnlSubsections=new JsonFile<ProfitLossSubsection>(dir,'profit-loss-subsections.json',z.array(pnlSubsection),()=>[]);
     this.historicalBalances=new JsonFile<HistoricalAccountBalance>(dir,'lonneux-historical-balances.json',z.array(historicalBalance),()=>[]);
     this.reportSettings=new JsonFile<ReportSettings>(dir,'report-settings.json',z.array(reportSettings),()=>[]);
+    this.bfrSections=new JsonFile<BfrSection>(dir,'bfr-sections.json',z.array(bfrSection),()=>[]);
   }
   async bootstrap(){
     const companies=await this.companies.read(),now=new Date().toISOString();
     const ensureCompany=async(slug:string,name:string)=>{let item=companies.find(c=>c.slug===slug);if(!item){item={id:crypto.randomUUID(),slug,name,status:'active' as const,connectorType:'odoo' as const,createdAt:now,updatedAt:now};companies.push(item);await this.companies.write(companies)}return item};
     const gimi=await ensureCompany('gimi','Gimi'),lonneux=await ensureCompany('lonneux','Lonneux');
     const boards=await this.dashboards.read(),ensureBoard=async(companyId:string,slug:string,label:string,order:number)=>{if(!boards.some(d=>d.companyId===companyId&&d.slug===slug)){boards.push({id:crypto.randomUUID(),companyId,slug,label,order,status:'active'});await this.dashboards.write(boards)}};
-    await ensureBoard(gimi.id,'compte-resultat','Compte de résultat',0);await ensureBoard(gimi.id,'compte-resultat-ltm','Compte de résultat LTM',1);await ensureBoard(gimi.id,'compte-resultat-extrapole','Compte de résultat extrapolé',2);await ensureBoard(gimi.id,'bilan','Bilan',3);await ensureBoard(lonneux.id,'compte-resultat','Compte de résultat',0);await ensureBoard(lonneux.id,'compte-resultat-extrapole','Compte de résultat extrapolé',1);await ensureBoard(lonneux.id,'bilan','Bilan',2);
+    await ensureBoard(gimi.id,'compte-resultat','Compte de résultat',0);await ensureBoard(gimi.id,'compte-resultat-ltm','Compte de résultat LTM',1);await ensureBoard(gimi.id,'compte-resultat-extrapole','Compte de résultat extrapolé',2);await ensureBoard(gimi.id,'bilan','Bilan',3);await ensureBoard(gimi.id,'bfr','BFR',4);await ensureBoard(lonneux.id,'compte-resultat','Compte de résultat',0);await ensureBoard(lonneux.id,'compte-resultat-extrapole','Compte de résultat',1);await ensureBoard(lonneux.id,'bilan','Bilan',2);
     const settings=await this.reportSettings.read(),previousMonth=new Date(Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth()-1,1)).toISOString().slice(0,7);
     for(const item of [gimi,lonneux])if(!settings.some(setting=>setting.companyId===item.id))settings.push({companyId:item.id,lastClosedMonth:previousMonth,updatedAt:now});
     await this.reportSettings.write(settings);
@@ -62,6 +64,22 @@ export class Store {
       }
     }
     await this.pnlSections.write(sections);
+    const bfr=await this.bfrSections.read();
+    if(!bfr.some(section=>section.companyId===gimi.id)){
+      const defaults:Array<[string,'add'|'subtract',string[]]>=[
+        ['Stocks et encours','add',['30','31','32','33','34','35','36','37','39']],
+        ['Créances commerciales et avances fournisseurs','add',['40']],
+        ['Autres créances d’exploitation','add',['41']],
+        ['Régularisations actives','add',['490','491']],
+        ['Dettes fournisseurs','subtract',['44']],
+        ['Dettes fiscales et sociales d’exploitation','subtract',['45']],
+        ['Avances clients et charges à imputer','subtract',['46']],
+        ['Autres dettes d’exploitation','subtract',['48']],
+        ['Régularisations passives','subtract',['492','493']],
+      ];
+      bfr.push(...defaults.map(([label,sign,prefixes],order)=>({id:crypto.randomUUID(),companyId:gimi.id,label,sign,prefixes,order,createdAt:now,updatedAt:now})));
+      await this.bfrSections.write(bfr);
+    }
     const revenue=sections.find(s=>s.companyId===gimi.id&&s.kind==='accounts'&&s.prefixes.includes('70'));
     const subs=await this.pnlSubsections.read();
     if(revenue&&!subs.some(s=>s.companyId===gimi.id)){

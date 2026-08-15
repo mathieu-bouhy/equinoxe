@@ -1,5 +1,5 @@
 import { config, type OdooConnection } from '../config';
-import type { BalanceAccount, BalanceLine, BalanceReport, CashFlowReport, ProfitLossAccount, ProfitLossLine, ProfitLossLtmReport, ProfitLossMonthlyReport, ProfitLossPeriod, ProfitLossReport, ProfitLossSection, ProfitLossSubsection } from '@equinoxe/shared';
+import type { BalanceAccount, BalanceLine, BalanceReport, BfrReport, BfrSection, CashFlowReport, ProfitLossAccount, ProfitLossLine, ProfitLossLtmReport, ProfitLossMonthlyReport, ProfitLossPeriod, ProfitLossReport, ProfitLossSection, ProfitLossSubsection } from '@equinoxe/shared';
 
 /** A closed allow-list: a future RPC method is denied until explicitly reviewed. */
 export const READ_ONLY_ODOO_METHODS = new Set([
@@ -154,6 +154,17 @@ export class OdooConnector {
     // Account balances use debit-positive accounting signs. Present liabilities as positive values in the UI.
     liabilities.forEach(line=>{line.values=Object.fromEntries(years.map(year=>[String(year),-(line.values[String(year)]??0)]));line.accounts.forEach(account=>account.values=Object.fromEntries(Object.entries(account.values).map(([year,value])=>[year,-value])))});
     return {years,assets,liabilities,generatedAt:new Date().toISOString(),source:'odoo'};
+  }
+  async getBfr(years:number[], sections:BfrSection[], asOf?:string):Promise<BfrReport>{
+    const uid=await this.authenticate(), ordered=[...sections].sort((a,b)=>a.order-b.order);
+    const groups=await Promise.all(years.map(year=>{const end=asOf&&year===Number(asOf.slice(0,4))?asOf:`${year}-12-31`;return this.call(uid,'account.move.line','read_group',[[['parent_state','=','posted'],['date','<=',end]],['balance'],['account_id']],{lazy:false}) as Promise<Group[]>;}));
+    const ids=[...new Set(groups.flat().flatMap(group=>group.account_id?[group.account_id[0]]:[]))],accounts=ids.length?await this.call(uid,'account.account','read',[ids],{fields:['code','name','account_type']}) as Account[]:[],byId=new Map(accounts.map(account=>[account.id,account]));
+    const details=new Map<string,Map<string,BalanceAccount>>(ordered.map(section=>[section.id,new Map()]));
+    const owner=(code:string)=>ordered.filter(section=>section.prefixes.some(prefix=>code.startsWith(prefix))).sort((a,b)=>Math.max(...b.prefixes.filter(prefix=>code.startsWith(prefix)).map(prefix=>prefix.length))-Math.max(...a.prefixes.filter(prefix=>code.startsWith(prefix)).map(prefix=>prefix.length)))[0];
+    groups.forEach((yearGroups,index)=>yearGroups.forEach(group=>{const account=group.account_id?byId.get(group.account_id[0]):undefined;if(!account||!group.account_id||!isProfitLossAccountCode(account.code)||typeof group.balance!=='number')return;const section=owner(account.code);if(!section)return;const rows=details.get(section.id)!,id=String(account.id),row=rows.get(id)??{id,code:account.code,label:String(account.name??group.account_id[1]??'Compte sans libellé'),values:{}};row.values[String(years[index])]=group.balance;rows.set(id,row)}));
+    const lines=ordered.map(section=>{const accounts=[...details.get(section.id)!.values()].sort((a,b)=>a.code.localeCompare(b.code)),values=Object.fromEntries(years.map(year=>[String(year),accounts.reduce((sum,account)=>sum+(account.values[String(year)]??0),0)])),variations=Object.fromEntries(years.map((year,index)=>[String(year),index===0?null:(values[String(year)]??0)-(values[String(years[index-1])]??0)]));return {id:section.id,label:section.label,sign:section.sign,values,variations,accounts};});
+    const total=Object.fromEntries(years.map(year=>[String(year),lines.reduce((sum,line)=>sum+(line.values[String(year)]??0),0)])),variation=Object.fromEntries(years.map((year,index)=>[String(year),index===0?null:(total[String(year)]??0)-(total[String(years[index-1])]??0)]));
+    return {years,lines,total,variation,generatedAt:new Date().toISOString(),source:'odoo'};
   }
   async getCashFlow(years:number[],sections:ProfitLossSection[],asOf?:string):Promise<CashFlowReport>{
     const [pnl,balance]=await Promise.all([this.getProfitLoss(years,sections,[],false,asOf),this.getBalance(years,asOf)]);
