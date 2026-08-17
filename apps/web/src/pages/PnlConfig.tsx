@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { GripVertical, Plus, Save, Sigma, Trash2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOutletContext, useParams } from 'react-router-dom';
-import type { Company, ProfitLossFormulaOperator, ProfitLossSection, ProfitLossSubsection } from '@equinoxe/shared';
+import type { Company, HistoricalAccountBalance, ProfitLossFormulaOperator, ProfitLossSection, ProfitLossSubsection } from '@equinoxe/shared';
 import { api } from '../services/api';
 import { Button, Card, ErrorState, Input, LoadingState, PageHeader, Select } from '../components/ui';
 import './pnl-config.css';
@@ -17,7 +17,9 @@ export function PnlConfig(){
   const analyticsEnabled=current.slug==='gimi',[level,setLevel]=useState<'primary'|'secondary'>('primary'),[draggedId,setDraggedId]=useState<string|null>(null);
   const sectionsQ=useQuery({queryKey:['sections',current.id],queryFn:()=>api.sections(current.id)}),subQ=useQuery({queryKey:['subsections',current.id],queryFn:()=>api.subsections(current.id),enabled:analyticsEnabled});
   const [sections,setSections]=useState<ProfitLossSection[]|null>(null),[subsections,setSubsections]=useState<ProfitLossSubsection[]|null>(null);
-  const saveSections=useMutation({mutationFn:(rows:ProfitLossSection[])=>api.saveSections(current.id,rows),onSuccess:data=>{setSections(data);qc.invalidateQueries({queryKey:['profit-loss',current.id]})}}),saveSubs=useMutation({mutationFn:(rows:ProfitLossSubsection[])=>api.saveSubsections(current.id,rows),onSuccess:data=>{setSubsections(data);qc.invalidateQueries({queryKey:['profit-loss',current.id]})}});
+  const saveSections=useMutation({mutationFn:(rows:ProfitLossSection[])=>api.saveSections(current.id,rows),onSuccess:data=>{setSections(data);qc.invalidateQueries({queryKey:['profit-loss',current.id]})}}),saveSubs=useMutation({mutationFn:(rows:ProfitLossSubsection[])=>api.saveSubsections(current.id,rows),onSuccess:data=>{setSubsections(data);qc.invalidateQueries({queryKey:['profit-loss',current.id]})}}),importHistorical=useMutation({mutationFn:(payload:{sourceFile:string;balances:Array<Pick<HistoricalAccountBalance,'accountCode'|'label'|'year'|'amount'>>})=>api.importHistoricalProfitLoss(current.id,payload.sourceFile,payload.balances),onSuccess:data=>{setImportMessage(`Import terminé : ${data.importedCount} comptes pour ${data.years.join(' et ')}.`);qc.invalidateQueries({queryKey:['profit-loss',current.id]})}});
+  const [importMessage,setImportMessage]=useState('');
+  const handleHistoryFile=async(event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];if(!file)return;try{const payload=JSON.parse(await file.text());if(!payload||typeof payload.sourceFile!=='string'||!Array.isArray(payload.balances))throw new Error('Format JSON invalide.');setImportMessage('Import en cours…');importHistorical.mutate(payload);}catch(error){setImportMessage(error instanceof Error?error.message:'Fichier historique invalide.');}};
   if(sectionsQ.isLoading||(analyticsEnabled&&subQ.isLoading))return <LoadingState/>;
   if(sectionsQ.error||(analyticsEnabled&&subQ.error)||!sectionsQ.data)return <ErrorState message="Impossible de charger la configuration."/>;
   const rows=sections??sectionsQ.data,subs=subsections??subQ.data??[];
@@ -28,6 +30,7 @@ export function PnlConfig(){
   return <>
     <PageHeader title={`Configuration du compte de résultat · ${current.name}`}><Button onClick={()=>level==='primary'?saveSections.mutate(rows.map((row,order)=>({...row,order}))):saveSubs.mutate(subs.map((row,order)=>({...row,order})))} disabled={saveSections.isPending||saveSubs.isPending}><Save size={16}/>{saveSections.isPending||saveSubs.isPending?'Enregistrement…':'Enregistrer'}</Button></PageHeader>
     {analyticsEnabled&&<div className="config-levels" role="tablist"><button className={level==='primary'?'active':''} onClick={()=>setLevel('primary')}>Premier niveau</button><button className={level==='secondary'?'active':''} onClick={()=>setLevel('secondary')}>Deuxième niveau analytique</button></div>}
+    {current.slug==='lonneux'&&<Card className="section-card historical-import-card"><div className="section-content"><div className="section-title"><strong>Importer l’historique Bob</strong></div><p className="config-intro">Importe uniquement les années présentes dans le fichier JSON. Les données 2026 restent alimentées par Odoo.</p><input type="file" accept="application/json,.json" onChange={handleHistoryFile} disabled={importHistorical.isPending}/>{importMessage&&<p className="config-intro">{importMessage}</p>}</div></Card>}
     {level==='primary'?<>
       <p className="config-intro">Glissez une ligne pour modifier son ordre. Les rubriques regroupent des comptes, les lignes <strong>Calcul</strong> additionnent ou soustraient les rubriques choisies.</p>
       <div className="config-list">{rows.map((row,index)=><Card className={`section-card ${row.kind==='calculation'?'calculation-card':''}`} key={row.id} draggable onDragStart={()=>setDraggedId(row.id)} onDragOver={event=>event.preventDefault()} onDrop={()=>moveRow(row.id)}>
