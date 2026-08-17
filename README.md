@@ -43,6 +43,22 @@ bun run build
 
 Les variables et les données locales contenant des secrets sont exclues de Git. Ne versionnez jamais `apps/api/.env.local` ni le dossier `data`.
 
+## Collaboration GitHub et déploiement Render
+
+La branche `main` est la branche de publication : chaque push déclenche le déploiement automatique Render. Pour éviter qu’un travail ne soit écrasé ou publié sans contrôle, chacun travaille sur une branche distincte puis crée une *pull request* vers `main`.
+
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c berina/description-courte
+# modifications, vérifications locales puis commit
+git push -u origin berina/description-courte
+```
+
+GitHub ouvre alors une pull request. Le contrôle automatique **Vérification avant fusion** exécute le typecheck, les tests et le build. Un conflit est signalé par GitHub avant toute fusion : ne fusionnez pas tant qu’il n’est pas résolu et revu. Après fusion sur `main`, Render publie automatiquement la version validée.
+
+Un push GitHub ne met pas à jour automatiquement le dossier local de l’autre personne. Avant de commencer, et après une fusion, exécutez `git pull --ff-only origin main`. N’ajoutez jamais de secret Odoo ou Render dans Git : ils restent exclusivement dans les variables d’environnement Render et dans `apps/api/.env.local` en local.
+
 ## Déploiement Render (première version partagée)
 
 Le dépôt inclut un `render.yaml` et un `Dockerfile` pour déployer l'application comme un unique service HTTPS. Le frontend et l'API partagent alors la même origine, ce qui préserve les cookies de session HTTP-only.
