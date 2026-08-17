@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { BfrSection, Company, CompanyAccess, DashboardDefinition, HistoricalAccountBalance, IntegrationMetadata, ProfitLossSection, ProfitLossSubsection, ReportSettings, User } from '@equinoxe/shared';
 import { JsonFile } from './json-file';
+import type { Collection } from './collection';
+import { PostgresDatabase, PostgresFile } from './postgres-file';
 
 const status=z.enum(['active','inactive']);
 const user=z.object({id:z.string(),name:z.string(),email:z.string().email(),role:z.enum(['admin','viewer']),status,analysisAccess:z.array(z.string()).default([]),passwordHash:z.string(),passwordSalt:z.string(),createdAt:z.string(),updatedAt:z.string(),lastLoginAt:z.string().nullable()});
@@ -26,20 +28,24 @@ const calculationSpecs:CalculationSpec[]=[
 const displayOrder=['Chiffre d’affaires','Marchandises','Marge brute','Sous-traitance','Services et biens divers','Personnel','Charges d’exploitation','Produits d’exploitation','Coûts hors achats','EBITDA','Amortissements','Résultat d’exploitation','Financier','Résultat avant impôts','Impôts','Résultat après impôts'];
 
 export class Store {
-  users;companies;access;dashboards;integrations;pnlSections;pnlSubsections;historicalBalances;reportSettings;bfrSections;
-  constructor(dir:string){
-    this.users=new JsonFile<User>(dir,'users.json',z.array(user) as unknown as z.ZodType<User[]>,()=>[]);
-    this.companies=new JsonFile<Company>(dir,'companies.json',z.array(company),()=>[]);
-    this.access=new JsonFile<CompanyAccess>(dir,'company-access.json',z.array(access),()=>[]);
-    this.dashboards=new JsonFile<DashboardDefinition>(dir,'dashboards.json',z.array(dashboard),()=>[]);
-    this.integrations=new JsonFile<IntegrationMetadata>(dir,'integrations.json',z.array(integration),()=>[]);
-    this.pnlSections=new JsonFile<ProfitLossSection>(dir,'profit-loss-sections.json',z.array(pnlSection) as unknown as z.ZodType<ProfitLossSection[]>,()=>[]);
-    this.pnlSubsections=new JsonFile<ProfitLossSubsection>(dir,'profit-loss-subsections.json',z.array(pnlSubsection),()=>[]);
-    this.historicalBalances=new JsonFile<HistoricalAccountBalance>(dir,'lonneux-historical-balances.json',z.array(historicalBalance),()=>[]);
-    this.reportSettings=new JsonFile<ReportSettings>(dir,'report-settings.json',z.array(reportSettings),()=>[]);
-    this.bfrSections=new JsonFile<BfrSection>(dir,'bfr-sections.json',z.array(bfrSection),()=>[]);
+  users:Collection<User>;companies:Collection<Company>;access:Collection<CompanyAccess>;dashboards:Collection<DashboardDefinition>;integrations:Collection<IntegrationMetadata>;pnlSections:Collection<ProfitLossSection>;pnlSubsections:Collection<ProfitLossSubsection>;historicalBalances:Collection<HistoricalAccountBalance>;reportSettings:Collection<ReportSettings>;bfrSections:Collection<BfrSection>;
+  private readonly database?:PostgresDatabase;
+  constructor(dir:string,databaseUrl?:string){
+    this.database=databaseUrl?new PostgresDatabase(databaseUrl):undefined;
+    const collection=<T>(name:string,schema:z.ZodType<T[]>,seed:()=>T[]):Collection<T>=>this.database?new PostgresFile<T>(this.database,dir,name,schema,seed):new JsonFile<T>(dir,name,schema,seed);
+    this.users=collection<User>('users.json',z.array(user) as unknown as z.ZodType<User[]>,()=>[]);
+    this.companies=collection<Company>('companies.json',z.array(company),()=>[]);
+    this.access=collection<CompanyAccess>('company-access.json',z.array(access),()=>[]);
+    this.dashboards=collection<DashboardDefinition>('dashboards.json',z.array(dashboard),()=>[]);
+    this.integrations=collection<IntegrationMetadata>('integrations.json',z.array(integration),()=>[]);
+    this.pnlSections=collection<ProfitLossSection>('profit-loss-sections.json',z.array(pnlSection) as unknown as z.ZodType<ProfitLossSection[]>,()=>[]);
+    this.pnlSubsections=collection<ProfitLossSubsection>('profit-loss-subsections.json',z.array(pnlSubsection),()=>[]);
+    this.historicalBalances=collection<HistoricalAccountBalance>('lonneux-historical-balances.json',z.array(historicalBalance),()=>[]);
+    this.reportSettings=collection<ReportSettings>('report-settings.json',z.array(reportSettings),()=>[]);
+    this.bfrSections=collection<BfrSection>('bfr-sections.json',z.array(bfrSection),()=>[]);
   }
   async bootstrap(){
+    await this.database?.bootstrap();
     const companies=await this.companies.read(),now=new Date().toISOString();
     const ensureCompany=async(slug:string,name:string)=>{let item=companies.find(c=>c.slug===slug);if(!item){item={id:crypto.randomUUID(),slug,name,status:'active' as const,connectorType:'odoo' as const,createdAt:now,updatedAt:now};companies.push(item);await this.companies.write(companies)}return item};
     const gimi=await ensureCompany('gimi','Gimi'),lonneux=await ensureCompany('lonneux','Lonneux');

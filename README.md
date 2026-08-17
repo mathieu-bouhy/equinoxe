@@ -16,6 +16,12 @@ Ouvrez `http://localhost:5173`. L’API écoute sur le port 3001. Le premier adm
 
 Les données se trouvent dans `data/`, ignoré par Git. Pour un autre emplacement, renseignez `APP_DATA_DIR` (chemin relatif à `apps/api` ou absolu).
 
+### Données partagées avec PostgreSQL
+
+Par défaut, Equinoxe fonctionne en fichiers JSON, ce qui est idéal pour un environnement local isolé. Pour partager les utilisateurs, les accès et les configurations entre Render, votre poste et celui de Bérénice, renseignez le même `DATABASE_URL` dans chaque fichier `apps/api/.env.local` et dans les variables Render. L'API utilise alors PostgreSQL comme source de vérité ; les fichiers JSON ne servent qu'à importer les données lors de la toute première connexion à une base vide.
+
+Sur Render, créez la base dans la région **Frankfurt**, puis renseignez dans `DATABASE_URL` de l'application l'**Internal Database URL**. Sur les postes locaux, utilisez l'**External Database URL** protégée par TLS (`sslmode=require`). Ne mettez jamais cette URL dans Git. Les administrateurs qui exécutent une API locale connectée à cette base modifient les mêmes utilisateurs et réglages que la production : utilisez plutôt les données JSON locales ou une base de test pour développer.
+
 ## Configuration Odoo et sécurité production
 
 Dans `apps/api/.env.local`, renseignez `GIMI_ODOO_BASE_URL`, `GIMI_ODOO_DATABASE`, `GIMI_ODOO_USERNAME` et `GIMI_ODOO_API_KEY`. La page **Intégrations** teste une authentification JSON-RPC Odoo ; elle ne transmet ni ne stocke jamais le secret. Une configuration absente s’affiche comme « Non configuré ».
@@ -29,7 +35,8 @@ Equinoxe impose sa propre protection : son connecteur repose sur une liste ferm�
 - `apps/web` : React/Vite, React Router, TanStack Query et composants UI.
 - `apps/api` : serveur Bun, Zod, sessions HMAC HTTP-only, autorisations et connecteurs.
 - `packages/shared` : modèles et contrats partagés.
-- `data` : fichiers JSON locaux avec écritures atomiques.
+- `data` : fichiers JSON locaux avec écritures atomiques, utilisés en développement ou comme source de migration initiale.
+- PostgreSQL (optionnel) : source de vérité centralisée pour les utilisateurs et configurations, activée par `DATABASE_URL`.
 
 La société Gimi et ses trois définitions de dashboards sont initialisées automatiquement. Pour ajouter une société, utilisez l’API d’administration (ou étendez l’écran dédié) ; les dashboards sont des enregistrements liés à la société. Pour ajouter un connecteur, implémentez la même surface que `OdooConnector`, puis associez-le au `connectorType` de la société : les routes métier ne parlent pas directement à Odoo.
 
@@ -68,4 +75,4 @@ Le dépôt inclut un `render.yaml` et un `Dockerfile` pour déployer l'applicati
 3. Avant le premier déploiement, renseignez les variables dont la valeur est demandée : administrateur Equinoxe, `APP_ORIGIN` (l'URL `https://…onrender.com` fournie par Render) et les variables Odoo Gimi/Lonneux. Ne copiez jamais `apps/api/.env.local` dans GitHub.
 4. Lancez le déploiement et vérifiez `https://votre-url/health`, puis connectez-vous à l'application.
 
-Le disque persistant convient à cette première version avec une seule instance applicative. Pour la montée en charge, le multi-instance ou une exigence de haute disponibilité, la prochaine évolution sera la migration des repositories JSON vers PostgreSQL.
+Le disque persistant conserve une sauvegarde de migration. Pour le multi-utilisateur et les instances locales synchronisées, configurez PostgreSQL avec `DATABASE_URL` : les repositories existants basculent automatiquement sur la base centralisée.

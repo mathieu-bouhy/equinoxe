@@ -4,6 +4,7 @@ const odooConnection=(prefix:'GIMI'|'LONNEUX')=>({baseUrl:process.env[`${prefix}
 export const config = {
   port:number(process.env.PORT, 3001), origin:process.env.APP_ORIGIN ?? 'http://localhost:5173',
   dataDir:resolve(process.cwd(), process.env.APP_DATA_DIR ?? '../../data'),
+  databaseUrl:process.env.DATABASE_URL || undefined,
   authSecret:process.env.AUTH_SECRET ?? 'development-only-change-me', ttlHours:number(process.env.AUTH_TOKEN_TTL_HOURS,24),
   secureCookies:process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
   admin:{email:(process.env.EQUINOXE_ADMIN_EMAIL ?? 'admin@equinoxe.local').toLowerCase(),password:process.env.EQUINOXE_ADMIN_PASSWORD ?? 'change-me-now',name:process.env.EQUINOXE_ADMIN_NAME ?? 'Administrateur Equinoxe'},

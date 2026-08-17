@@ -17,6 +17,10 @@ services:
         value: "10000"
       - key: APP_DATA_DIR
         value: /var/data
+      # À renseigner avec l'Internal Database URL après la création de PostgreSQL.
+      # La première connexion importe automatiquement les JSON présents sur le disque.
+      - key: DATABASE_URL
+        sync: false
       - key: COOKIE_SECURE
         value: "true"
       - key: AUTH_SECRET
