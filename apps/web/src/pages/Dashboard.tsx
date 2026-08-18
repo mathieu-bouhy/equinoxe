@@ -7,6 +7,7 @@ import type { AccountingEntry, BalanceLine, BalanceReport, BfrReport, CashFlowRe
 import { Button, Card, ErrorState, LoadingState, Modal, PageHeader } from '../components/ui';
 import { api } from '../services/api';
 import { CapexDashboard } from './CapexDashboard';
+// CAPEX dashboard integration for BNB investment annexes.
 import './finance.css'; import './drilldown.css'; import './entries.css'; import './balance.css'; import './table-layout.css';
 
 type Context={me:PublicUser;companies:Company[];current:Company};
