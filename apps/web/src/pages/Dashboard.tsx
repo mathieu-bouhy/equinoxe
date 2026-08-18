@@ -6,7 +6,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import type { AccountingEntry, BalanceLine, BalanceReport, BfrReport, CashFlowReport, Company, ProfitLossAccount, ProfitLossLtmReport, ProfitLossMonthlyReport, ProfitLossReport, PublicUser, ReportSettings } from '@equinoxe/shared';
 import { Button, Card, ErrorState, LoadingState, Modal, PageHeader } from '../components/ui';
 import { api } from '../services/api';
-import { CapexDashboard } from './CapexDashboard';
+import { CapexDashboard } from './CapexReport';
 // CAPEX dashboard integration for BNB investment annexes.
 import './finance.css'; import './drilldown.css'; import './entries.css'; import './balance.css'; import './table-layout.css';
 
