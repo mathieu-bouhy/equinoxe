@@ -26,6 +26,7 @@ const row = (values: Partial<CapexValues>): CapexValues => ({ ...empty(), ...val
 const years = [2023, 2024, 2025, 2026];
 
 // BNB Consult A-cap/M-app 6.1.x values, expressed in thousands of euros.
+// Deployment refresh: keep the CAPEX view wired to the current published data.
 // BNB publishes 22/27 as an aggregate; the supplied GIMI amortisation
 // schedule provides a 2025 split for categories 23, 24 and 26.
 const data: Record<string, CapexCategory[]> = {
