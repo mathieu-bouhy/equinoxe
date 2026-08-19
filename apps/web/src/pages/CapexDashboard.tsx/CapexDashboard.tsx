@@ -1,5 +1,5 @@
-import { Card } from '../components/ui';
-import './capex.css';
+import { Card } from '../../components/ui';
+import '../capex.css';
 
 type CapexValues = {
   acquisitionInitial: number | null;
