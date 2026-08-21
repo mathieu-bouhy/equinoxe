@@ -1,8 +1,8 @@
 // @ts-nocheck
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Navigate, useOutletContext } from 'react-router-dom';
-import type { PublicUser } from '@equinoxe/shared';
-import { useQuery } from '@tanstack/react-query';
+import { medipostBusinessPlanDefaults, type MedipostBusinessPlanAssumptions, type PublicUser } from '@equinoxe/shared';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, FileText, Sigma } from 'lucide-react';
 import { Button, Card, PageHeader } from '../components/ui';
 import { api } from '../services/api';
@@ -18,7 +18,7 @@ type Values = Record<Year, number | null>;
 type Detail = { label: string; code: string; values: Values };
 type ReportLine = { label: string; values: Values; calculation?: boolean; details?: Detail[] };
 type ForecastYear = 2026 | 2027 | 2028;
-type BusinessAssumptions={growth:Record<ForecastYear,number>;rentDifference:Record<ForecastYear,number>;outgoingExecutiveSalary:Record<ForecastYear,number>;incomingExecutiveSalary:Record<ForecastYear,number>;companyValue:number;cashExtraction:number;loanAmount:number;loanYears:number;loanRate:number;workingCapitalRate:number;capexRate:number;rates:Record<string,Record<ForecastYear,number>>};
+type BusinessAssumptions=Omit<MedipostBusinessPlanAssumptions,'updatedAt'|'updatedByUserId'>;
 
 const amount = (value: number | null) => value === null ? '—' : new Intl.NumberFormat('fr-BE', { maximumFractionDigits: 0 }).format(value / 1000);
 const euroAmount = (value: number | null) => value === null ? '—' : new Intl.NumberFormat('fr-BE', { maximumFractionDigits: 0 }).format(value);
@@ -113,7 +113,12 @@ export function MedipostFile() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [percentages, setPercentages] = useState(false);
   const [view, setView] = useState<'pnl'|'balance'|'assumptions'|'analysis'|'building'|'bfr'>('pnl');
-  const [business,setBusiness]=useState<BusinessAssumptions>({growth:{2026:.05,2027:.05,2028:.05},rentDifference:{2026:0,2027:0,2028:0},outgoingExecutiveSalary:{2026:120000,2027:120000,2028:120000},incomingExecutiveSalary:{2026:120000,2027:120000,2028:120000},companyValue:4000000,cashExtraction:800000,loanAmount:3200000,loanYears:7,loanRate:.04,workingCapitalRate:.05,capexRate:271396/12403419,rates:{'Autres produits d’exploitation':{2026:165518/12403419,2027:165518/12403419,2028:165518/12403419},'Marchandises et approvisionnements':{2026:-7553179/12403419,2027:-7553179/12403419,2028:-7553179/12403419},'Services et biens divers':{2026:-1708634/12403419,2027:-1708634/12403419,2028:-1708634/12403419},'Frais de personnel':{2026:-2336496/12403419,2027:-2336496/12403419,2028:-2336496/12403419},'Autres charges d’exploitation':{2026:-119208/12403419,2027:-119208/12403419,2028:-119208/12403419},'Amortissements et réductions de valeur':{2026:-271396/12403419,2027:-271396/12403419,2028:-271396/12403419},'Produits financiers':{2026:15019/12403419,2027:15019/12403419,2028:15019/12403419},'Impôts sur le résultat':{2026:-142705/12403419,2027:-142705/12403419,2028:-142705/12403419}}});
+  const businessQuery=useQuery({queryKey:['medipost-business-plan-assumptions'],queryFn:api.medipostBusinessPlanAssumptions,enabled:authorised});
+  const [business,setBusiness]=useState<BusinessAssumptions>(()=>medipostBusinessPlanDefaults());
+  const businessReady=useRef(false);
+  const saveBusiness=useMutation({mutationFn:api.saveMedipostBusinessPlanAssumptions});
+  useEffect(()=>{if(!businessQuery.data||businessReady.current)return;const {updatedAt:_updatedAt,updatedByUserId:_updatedByUserId,...saved}=businessQuery.data;setBusiness(saved);businessReady.current=true;},[businessQuery.data]);
+  useEffect(()=>{if(!businessReady.current)return;const timer=window.setTimeout(()=>saveBusiness.mutate(business),700);return()=>window.clearTimeout(timer);},[business]);
   if(!authorised)return <Navigate to="/sans-acces" replace/>;
   if(access.isLoading)return <div className="state">Vérification de l’accès au dossier…</div>;
   if(access.error)return <Navigate to="/sans-acces" replace/>;
@@ -121,7 +126,7 @@ export function MedipostFile() {
   return <>
     <PageHeader title="Medipost"><p className="breadcrumb">Dossiers analysés / Medipost</p></PageHeader>
     <div className="tabs" role="tablist"><button className={view==='pnl'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('pnl')}>Compte de résultat</button><button className={view==='balance'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('balance')}>Bilan</button><button className={view==='bfr'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('bfr')}>BFR</button><button className={view==='assumptions'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('assumptions')}>Business plan · Hypothèses</button><button className={view==='analysis'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('analysis')}>Analyse du dossier</button><button className={view==='building'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('building')}>Bâtiment</button></div>
-    {view==='balance'?<MedipostBalance/>:view==='bfr'?<MedipostBfr/>:view==='assumptions'?<MedipostBusinessAssumptions value={business} onChange={setBusiness}/>:view==='analysis'?<MedipostDossierAnalysis/>:view==='building'?<MedipostBuilding/>:<MedipostBusinessPlan assumptions={business}/>} {/* Le compte unique rassemble réalisé et budget. */}
+    {view==='balance'?<MedipostBalance/>:view==='bfr'?<MedipostBfr/>:view==='assumptions'?<MedipostBusinessAssumptions value={business} onChange={setBusiness} saving={saveBusiness.isPending} saveError={saveBusiness.isError}/>:view==='analysis'?<MedipostDossierAnalysis/>:view==='building'?<MedipostBuilding/>:<MedipostBusinessPlan assumptions={business}/>} {/* Le compte unique rassemble réalisé et budget. */}
     {false && <>
     <div className="report-settings"><div><strong>Affichage du compte de résultat</strong><span>Activez les ratios de chaque rubrique par rapport au chiffre d’affaires.</span></div><div className="report-settings-actions"><Button variant={percentages ? 'primary' : 'secondary'} onClick={() => setPercentages(value => !value)} aria-pressed={percentages}>Pourcentage</Button></div></div>
     <Card className="profit-loss analysed-profit-loss">
@@ -214,13 +219,13 @@ const forecastYears: ForecastYear[] = [2026, 2027, 2028];
 const planActual = (label: string, year: Year) => report.find(line => line.label === label)?.values[year] ?? null;
 const updateNumber = (event: any) => Number(event.target.value) || 0;
 
-function MedipostBusinessAssumptions({ value, onChange }: { value: BusinessAssumptions; onChange: (value: BusinessAssumptions) => void }) {
+function MedipostBusinessAssumptions({ value, onChange, saving, saveError }: { value: BusinessAssumptions; onChange: (value: BusinessAssumptions) => void; saving:boolean; saveError:boolean }) {
   const updateField = (field: keyof BusinessAssumptions, next: number) => onChange({ ...value, [field]: next });
   const updateGrowth = (year: ForecastYear, next: number) => onChange({ ...value, growth: { ...value.growth, [year]: next / 100 } });
   const updateAnnualAmount = (field: 'rentDifference' | 'outgoingExecutiveSalary' | 'incomingExecutiveSalary', year: ForecastYear, next: number) => onChange({ ...value, [field]: { ...value[field], [year]: next * 1000 } });
   const updateRate = (label: string, year: ForecastYear, next: number) => onChange({ ...value, rates: { ...value.rates, [label]: { ...value.rates[label], [year]: next / 100 } } });
   return <div className="business-plan-page">
-    <div className="business-plan-intro"><div><p className="eyebrow">Dossier analysé · Medipost</p><h2>Business plan · Hypothèses</h2><p>Les projections 2026–2028 partent du réalisé 2025. Chaque charge opérationnelle est exprimée en pourcentage du chiffre d’affaires et reste modifiable.</p></div><span className="business-plan-badge">Simulation locale</span></div>
+    <div className="business-plan-intro"><div><p className="eyebrow">Dossier analysé · Medipost</p><h2>Business plan · Hypothèses</h2><p>Les projections 2026–2028 partent du réalisé 2025. Chaque charge opérationnelle est exprimée en pourcentage du chiffre d’affaires et reste modifiable.</p></div><span className="business-plan-badge">{saveError?'Erreur d’enregistrement':saving?'Enregistrement…':'Enregistré pour tous'}</span></div>
     <div className="business-plan-grid">
       <Card className="assumption-card"><h3>Hypothèses d’acquisition</h3><div className="assumption-fields">
         <label>Valeur de la société<input type="number" value={value.companyValue} step="100000" onChange={event => updateField('companyValue', updateNumber(event))}/><small>{euroAmount(value.companyValue)} €</small></label>
