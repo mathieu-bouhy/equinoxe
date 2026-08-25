@@ -50,7 +50,7 @@ export interface MedipostBusinessPlanAssumptions {
   loanYears:number;
   loanRate:number;
   workingCapitalRate:number;
-  capexRate:number;
+  capex:MedipostForecastValues;
   rates:Record<string,MedipostForecastValues>;
   updatedAt:string;
   updatedByUserId:string|null;
@@ -61,7 +61,7 @@ export const medipostBusinessPlanDefaults=():Omit<MedipostBusinessPlanAssumption
   rentDifference:{2026:0,2027:0,2028:0},
   outgoingExecutiveSalary:{2026:120000,2027:120000,2028:120000},
   incomingExecutiveSalary:{2026:120000,2027:120000,2028:120000},
-  companyValue:4000000,cashExtraction:800000,loanAmount:3200000,loanYears:7,loanRate:.04,workingCapitalRate:.05,capexRate:271396/12403419,
+  companyValue:4000000,cashExtraction:800000,loanAmount:3200000,loanYears:7,loanRate:.04,workingCapitalRate:.05,capex:{2026:284966,2027:299214,2028:314175},
   rates:{'Autres produits d’exploitation':{2026:165518/12403419,2027:165518/12403419,2028:165518/12403419},'Marchandises et approvisionnements':{2026:-7553179/12403419,2027:-7553179/12403419,2028:-7553179/12403419},'Services et biens divers':{2026:-1708634/12403419,2027:-1708634/12403419,2028:-1708634/12403419},'Frais de personnel':{2026:-2336496/12403419,2027:-2336496/12403419,2028:-2336496/12403419},'Autres charges d’exploitation':{2026:-119208/12403419,2027:-119208/12403419,2028:-119208/12403419},'Amortissements et réductions de valeur':{2026:-271396/12403419,2027:-271396/12403419,2028:-271396/12403419},'Produits financiers':{2026:15019/12403419,2027:15019/12403419,2028:15019/12403419},'Impôts sur le résultat':{2026:-142705/12403419,2027:-142705/12403419,2028:-142705/12403419}}
 });
 export interface PublicUser { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; createdAt:string; updatedAt:string; lastLoginAt:string|null }
