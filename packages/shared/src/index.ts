@@ -38,6 +38,9 @@ export type MedipostForecastValues = Record<MedipostForecastYear,number>;
 /** Hypothèses globales du business plan Medipost, partagées par tous les environnements. */
 export interface MedipostBusinessPlanAssumptions {
   growth:MedipostForecastValues;
+  oldRent:number;
+  newRent:number;
+  salaryDifference:number;
   rentDifference:MedipostForecastValues;
   outgoingExecutiveSalary:MedipostForecastValues;
   incomingExecutiveSalary:MedipostForecastValues;
@@ -54,6 +57,7 @@ export interface MedipostBusinessPlanAssumptions {
 }
 export const medipostBusinessPlanDefaults=():Omit<MedipostBusinessPlanAssumptions,'updatedAt'|'updatedByUserId'>=>({
   growth:{2026:.05,2027:.05,2028:.05},
+  oldRent:138000,newRent:208847,salaryDifference:-76000,
   rentDifference:{2026:0,2027:0,2028:0},
   outgoingExecutiveSalary:{2026:120000,2027:120000,2028:120000},
   incomingExecutiveSalary:{2026:120000,2027:120000,2028:120000},
