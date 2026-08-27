@@ -67,6 +67,11 @@ export class PostgresFile<T> implements Collection<T> {
     return this.database.read(this.name, this.schema, this.legacy);
   }
 
+  /** Migration explicite, réservée au transfert initial des fichiers JSON. */
+  async importLegacy(): Promise<void> {
+    await this.database.write(this.name, await this.legacy.read());
+  }
+
   write(values: T[]): Promise<void> {
     return this.database.write(this.name, values);
   }

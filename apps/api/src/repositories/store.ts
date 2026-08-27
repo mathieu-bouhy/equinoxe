@@ -33,9 +33,15 @@ const displayOrder=['Chiffre d’affaires','Marchandises','Marge brute','Sous-tr
 export class Store {
   users:Collection<User>;companies:Collection<Company>;access:Collection<CompanyAccess>;dashboards:Collection<DashboardDefinition>;integrations:Collection<IntegrationMetadata>;pnlSections:Collection<ProfitLossSection>;pnlSubsections:Collection<ProfitLossSubsection>;historicalBalances:Collection<HistoricalAccountBalance>;reportSettings:Collection<ReportSettings>;bfrSections:Collection<BfrSection>;timeEntries:Collection<TimeEntry>;medipostBusinessPlanAssumptions:Collection<MedipostBusinessPlanAssumptions>;
   private readonly database?:PostgresDatabase;
+  private readonly postgresFiles:Array<PostgresFile<unknown>>=[];
   constructor(dir:string,databaseUrl?:string){
     this.database=databaseUrl?new PostgresDatabase(databaseUrl):undefined;
-    const collection=<T>(name:string,schema:z.ZodType<T[]>,seed:()=>T[]):Collection<T>=>this.database?new PostgresFile<T>(this.database,dir,name,schema,seed):new JsonFile<T>(dir,name,schema,seed);
+    const collection=<T>(name:string,schema:z.ZodType<T[]>,seed:()=>T[]):Collection<T>=>{
+      if(!this.database)return new JsonFile<T>(dir,name,schema,seed);
+      const file=new PostgresFile<T>(this.database,dir,name,schema,seed);
+      this.postgresFiles.push(file as unknown as PostgresFile<unknown>);
+      return file;
+    };
     this.users=collection<User>('users.json',z.array(user) as unknown as z.ZodType<User[]>,()=>[]);
     this.companies=collection<Company>('companies.json',z.array(company),()=>[]);
     this.access=collection<CompanyAccess>('company-access.json',z.array(access),()=>[]);
@@ -51,6 +57,7 @@ export class Store {
   }
   async bootstrap(){
     await this.database?.bootstrap();
+    if(process.env.POSTGRES_IMPORT_FROM_JSON==='true')await Promise.all(this.postgresFiles.map(file=>file.importLegacy()));
     await this.getMedipostBusinessPlanAssumptions();
     const companies=await this.companies.read(),now=new Date().toISOString();
     const ensureCompany=async(slug:string,name:string)=>{let item=companies.find(c=>c.slug===slug);if(!item){item={id:crypto.randomUUID(),slug,name,status:'active' as const,connectorType:'odoo' as const,createdAt:now,updatedAt:now};companies.push(item);await this.companies.write(companies)}return item};
