@@ -13,7 +13,9 @@ export class PostgresDatabase {
   private initialized?: Promise<void>;
 
   constructor(connectionString: string) {
-    this.sql = postgres(connectionString, { max: 10, connect_timeout: 15, idle_timeout: 20 });
+    const url = new URL(connectionString);
+    const ssl = url.searchParams.get('sslmode') === 'require' || url.hostname.endsWith('.render.com') ? 'require' : undefined;
+    this.sql = postgres(connectionString, { max: 10, connect_timeout: 15, idle_timeout: 20, ssl });
   }
 
   async bootstrap(): Promise<void> {
