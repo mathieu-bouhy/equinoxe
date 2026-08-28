@@ -129,7 +129,14 @@ export class Store {
     const existing=(await this.medipostBusinessPlanAssumptions.read())[0],defaults=medipostBusinessPlanDefaults(),now=new Date().toISOString();
     if(!existing){const created={...defaults,updatedAt:now,updatedByUserId:null};await this.medipostBusinessPlanAssumptions.write([created]);return created;}
     const stored=existing as unknown as Record<string,unknown>;
-    const merged={...existing,...Object.fromEntries(Object.entries(defaults).map(([key,value])=>[key,typeof value==='object'&&!Array.isArray(value)?{...value,...(stored[key] as object)}:(stored[key]??value)]))} as MedipostBusinessPlanAssumptions;
+    // Migration non destructive : les premières configurations utilisaient le
+    // libellé « Charges financières ». Le tableau l'appelle maintenant
+    // « Charges financières historiques » tout en conservant la valeur saisie.
+    const storedRates=(stored.rates as Record<string,unknown>|undefined)??{};
+    if(!storedRates['Charges financières historiques']&&storedRates['Charges financières']){
+      storedRates['Charges financières historiques']=storedRates['Charges financières'];
+    }
+    const merged={...existing,...Object.fromEntries(Object.entries(defaults).map(([key,value])=>[key,typeof value==='object'&&!Array.isArray(value)?{...value,...(key==='rates'?storedRates:(stored[key] as object))}:(stored[key]??value)]))} as MedipostBusinessPlanAssumptions;
     if(JSON.stringify(existing)!==JSON.stringify(merged))await this.medipostBusinessPlanAssumptions.write([merged]);
     return merged;
   }

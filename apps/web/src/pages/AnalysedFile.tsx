@@ -21,6 +21,22 @@ type Detail = { label: string; code: string; values: Values };
 type ReportLine = { label: string; values: Values; calculation?: boolean; details?: Detail[] };
 type ForecastYear = 2026 | 2027 | 2028;
 type BusinessAssumptions=Omit<MedipostBusinessPlanAssumptions,'updatedAt'|'updatedByUserId'>;
+function mergeBusinessAssumptions(saved: Partial<BusinessAssumptions>): BusinessAssumptions {
+  const defaults=medipostBusinessPlanDefaults();
+  const savedRates=saved.rates??{};
+  const legacyFinancialRate=savedRates['Charges financières'];
+  return {
+    ...defaults,...saved,
+    growth:{...defaults.growth,...saved.growth},
+    rentDifference:{...defaults.rentDifference,...saved.rentDifference},
+    outgoingExecutiveSalary:{...defaults.outgoingExecutiveSalary,...saved.outgoingExecutiveSalary},
+    incomingExecutiveSalary:{...defaults.incomingExecutiveSalary,...saved.incomingExecutiveSalary},
+    capex:{...defaults.capex,...saved.capex},
+    rates:Object.fromEntries(Object.entries(defaults.rates).map(([label,years])=>[
+      label,{...years,...(savedRates[label]??(label==='Charges financières historiques'?legacyFinancialRate:{}))}
+    ]))
+  };
+}
 
 const amount = (value: number | null) => value === null ? '—' : new Intl.NumberFormat('fr-BE', { maximumFractionDigits: 0 }).format(value / 1000);
 const euroAmount = (value: number | null) => value === null ? '—' : new Intl.NumberFormat('fr-BE', { maximumFractionDigits: 0 }).format(value);
@@ -119,7 +135,7 @@ export function MedipostFile() {
   const [business,setBusiness]=useState<BusinessAssumptions>(()=>medipostBusinessPlanDefaults());
   const businessReady=useRef(false);
   const saveBusiness=useMutation({mutationFn:api.saveMedipostBusinessPlanAssumptions});
-  useEffect(()=>{if(!businessQuery.data||businessReady.current)return;const {updatedAt:_updatedAt,updatedByUserId:_updatedByUserId,...saved}=businessQuery.data;setBusiness(saved);businessReady.current=true;},[businessQuery.data]);
+  useEffect(()=>{if(!businessQuery.data||businessReady.current)return;const {updatedAt:_updatedAt,updatedByUserId:_updatedByUserId,...saved}=businessQuery.data;setBusiness(mergeBusinessAssumptions(saved));businessReady.current=true;},[businessQuery.data]);
   useEffect(()=>{if(!businessReady.current)return;const timer=window.setTimeout(()=>saveBusiness.mutate(business),700);return()=>window.clearTimeout(timer);},[business]);
   if(!authorised)return <Navigate to="/sans-acces" replace/>;
   if(access.isLoading)return <div className="state">Vérification de l’accès au dossier…</div>;
@@ -293,7 +309,7 @@ function MedipostBusinessPlan({ assumptions }: { assumptions: BusinessAssumption
     const otherCharges = projection('Autres charges d’exploitation', year);
     const depreciation = projection('Amortissements et réductions de valeur', year);
     const financialIncome = projection('Produits financiers', year);
-    const historicalFinancialCharges = projection('Charges financières', year);
+    const historicalFinancialCharges = projection('Charges financières historiques', year);
     const newDebtInterest = -(debtSchedule.find(row=>row.year===year)?.interest??0);
     // Marge commerciale : chiffre d'affaires + autres produits d'exploitation
     // - marchandises. Les services et biens divers sont présentés ensuite.
