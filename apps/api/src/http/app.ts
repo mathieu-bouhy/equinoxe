@@ -17,7 +17,7 @@ export function createApp(store=new Store(config.dataDir,config.databaseUrl),aut
  if(path==='/v1/analysed-files/medipost/business-plan-assumptions'){
    if(user.role!=='admin'&&!user.analysisAccess.includes('medipost'))return secured(fail('FORBIDDEN','Accès au dossier Medipost refusé.',403));
    if(method==='GET')return secured(json(await store.getMedipostBusinessPlanAssumptions()));
-   if(method==='PUT'){const denied=admin();if(denied)return secured(denied);const parsed=await body(request,medipostBusinessPlanAssumptions.omit({updatedAt:true,updatedByUserId:true}));if(!parsed.success)return secured(fail('VALIDATION','Hypothèses de business plan invalides.',422));return secured(json(await store.saveMedipostBusinessPlanAssumptions(parsed.data,user.id)));}
+   if(method==='PUT'){const parsed=await body(request,medipostBusinessPlanAssumptions.omit({updatedAt:true,updatedByUserId:true}));if(!parsed.success)return secured(fail('VALIDATION','Hypothèses de business plan invalides.',422));return secured(json(await store.saveMedipostBusinessPlanAssumptions(parsed.data,user.id)));}
  }
  const attendeeNames:Record<string,string>={'basile.pirlot@gimi.be':'Basile Pirlot','mathieu.bouhy@gmail.com':'Mathieu Bouhy'};
  const classifyHours=(sourceCalendar:string,title:string,attendees:Array<{name:string;email:string|null}>):HoursClient=>{if(/\brun\b|\bva\b/i.test(title))return null;const source=[sourceCalendar,title,...attendees.flatMap(item=>[item.name,item.email??''])].join(' ').toLocaleLowerCase('fr-BE');if(/eurodrill/.test(source))return 'Eurodrill';if(/\bgimi\b|\bjimmy\b|basile\s+pirlot|@gimi\.be/.test(source))return 'Gimi';return null};
