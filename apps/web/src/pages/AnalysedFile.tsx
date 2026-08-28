@@ -2,7 +2,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Navigate, useOutletContext } from 'react-router-dom';
 import { medipostBusinessPlanDefaults, type MedipostBusinessPlanAssumptions, type PublicUser } from '@equinoxe/shared';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, FileText, Sigma } from 'lucide-react';
 import { Button, Card, PageHeader } from '../components/ui';
 import { api } from '../services/api';
@@ -133,10 +133,11 @@ export function MedipostFile() {
   const [view, setView] = useState<'pnl'|'balance'|'assumptions'|'analysis'|'building'|'bfr'|'loi'|'valuation'>('pnl');
   const businessQuery=useQuery({queryKey:['medipost-business-plan-assumptions'],queryFn:api.medipostBusinessPlanAssumptions,enabled:authorised});
   const [business,setBusiness]=useState<BusinessAssumptions>(()=>medipostBusinessPlanDefaults());
+  const [businessDirty,setBusinessDirty]=useState(false);
   const businessReady=useRef(false);
-  const saveBusiness=useMutation({mutationFn:api.saveMedipostBusinessPlanAssumptions});
-  useEffect(()=>{if(!businessQuery.data||businessReady.current)return;const {updatedAt:_updatedAt,updatedByUserId:_updatedByUserId,...saved}=businessQuery.data;setBusiness(mergeBusinessAssumptions(saved));businessReady.current=true;},[businessQuery.data]);
-  useEffect(()=>{if(!businessReady.current)return;const timer=window.setTimeout(()=>saveBusiness.mutate(business),700);return()=>window.clearTimeout(timer);},[business]);
+  const queryClient=useQueryClient();
+  const saveBusiness=useMutation({mutationFn:api.saveMedipostBusinessPlanAssumptions,onSuccess:saved=>{const {updatedAt:_updatedAt,updatedByUserId:_updatedByUserId,...values}=saved;setBusiness(mergeBusinessAssumptions(values));setBusinessDirty(false);queryClient.setQueryData(['medipost-business-plan-assumptions'],saved);}});
+  useEffect(()=>{if(!businessQuery.data||businessReady.current)return;const {updatedAt:_updatedAt,updatedByUserId:_updatedByUserId,...saved}=businessQuery.data;setBusiness(mergeBusinessAssumptions(saved));setBusinessDirty(false);businessReady.current=true;},[businessQuery.data]);
   if(!authorised)return <Navigate to="/sans-acces" replace/>;
   if(access.isLoading)return <div className="state">Vérification de l’accès au dossier…</div>;
   if(access.error)return <Navigate to="/sans-acces" replace/>;
@@ -144,7 +145,7 @@ export function MedipostFile() {
   return <>
     <PageHeader title="Medipost"><p className="breadcrumb">Dossiers analysés / Medipost</p></PageHeader>
     <div className="tabs" role="tablist"><button className={view==='pnl'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('pnl')}>Compte de résultat</button><button className={view==='balance'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('balance')}>Bilan</button><button className={view==='bfr'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('bfr')}>BFR</button><button className={view==='assumptions'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('assumptions')}>Business plan · Hypothèses</button><button className={view==='valuation'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('valuation')}>Valorisation</button><button className={view==='analysis'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('analysis')}>Analyse du dossier</button><button className={view==='building'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('building')}>Bâtiment</button><button className={view==='loi'?'analysis-tab active':'analysis-tab'} onClick={()=>setView('loi')}>LOI</button></div>
-    {view==='balance'?<MedipostBalance/>:view==='bfr'?<MedipostBfr/>:view==='assumptions'?<MedipostBusinessAssumptions value={business} onChange={setBusiness} saving={saveBusiness.isPending} saveError={saveBusiness.isError}/>:view==='valuation'?<MedipostValuation assumptions={business}/>:view==='analysis'?<MedipostDossierAnalysis/>:view==='building'?<><MedipostBuilding/><MedipostPropertyValue/></>:view==='loi'?<MedipostLoi/>:<MedipostBusinessPlan assumptions={business}/>} {/* Le compte unique rassemble réalisé et budget. */}
+    {view==='balance'?<MedipostBalance/>:view==='bfr'?<MedipostBfr/>:view==='assumptions'?<MedipostBusinessAssumptions value={business} onChange={value=>{setBusiness(value);setBusinessDirty(true);}} onSave={()=>saveBusiness.mutate(business)} dirty={businessDirty} saving={saveBusiness.isPending} saveError={saveBusiness.isError}/>:view==='valuation'?<MedipostValuation assumptions={business}/>:view==='analysis'?<MedipostDossierAnalysis/>:view==='building'?<><MedipostBuilding/><MedipostPropertyValue/></>:view==='loi'?<MedipostLoi/>:<MedipostBusinessPlan assumptions={business}/>} {/* Le compte unique rassemble réalisé et budget. */}
     {false && <>
     <div className="report-settings"><div><strong>Affichage du compte de résultat</strong><span>Activez les ratios de chaque rubrique par rapport au chiffre d’affaires.</span></div><div className="report-settings-actions"><Button variant={percentages ? 'primary' : 'secondary'} onClick={() => setPercentages(value => !value)} aria-pressed={percentages}>Pourcentage</Button></div></div>
     <Card className="profit-loss analysed-profit-loss">
@@ -261,13 +262,13 @@ const forecastYears: ForecastYear[] = [2026, 2027, 2028];
 const planActual = (label: string, year: Year) => report.find(line => line.label === (label==='Charges financières historiques'?'Charges financières':label))?.values[year] ?? null;
 const updateNumber = (event: any) => Number(event.target.value) || 0;
 
-function MedipostBusinessAssumptions({ value, onChange, saving, saveError }: { value: BusinessAssumptions; onChange: (value: BusinessAssumptions) => void; saving:boolean; saveError:boolean }) {
+function MedipostBusinessAssumptions({ value, onChange, onSave, dirty, saving, saveError }: { value: BusinessAssumptions; onChange: (value: BusinessAssumptions) => void; onSave:()=>void; dirty:boolean; saving:boolean; saveError:boolean }) {
   const updateField = (field: keyof BusinessAssumptions, next: number) => onChange({ ...value, [field]: next });
   const updateGrowth = (year: ForecastYear, next: number) => onChange({ ...value, growth: { ...value.growth, [year]: next / 100 } });
   const updateCapex = (year: ForecastYear, next: number) => onChange({ ...value, capex: { ...value.capex, [year]: next * 1000 } });
   const updateRate = (label: string, year: ForecastYear, next: number) => onChange({ ...value, rates: { ...value.rates, [label]: { ...value.rates[label], [year]: next / 100 } } });
   return <div className="business-plan-page">
-    <div className="business-plan-intro"><div><p className="eyebrow">Dossier analysé · Medipost</p><h2>Business plan · Hypothèses</h2><p>Les projections 2026–2028 partent du réalisé 2025. Chaque charge opérationnelle est exprimée en pourcentage du chiffre d’affaires et reste modifiable.</p></div><span className="business-plan-badge">{saveError?'Erreur d’enregistrement':saving?'Enregistrement…':'Enregistré pour tous'}</span></div>
+    <div className="business-plan-intro"><div><p className="eyebrow">Dossier analysé · Medipost</p><h2>Business plan · Hypothèses</h2><p>Les projections 2026–2028 partent du réalisé 2025. Chaque charge opérationnelle est exprimée en pourcentage du chiffre d’affaires et reste modifiable.</p></div><div className="business-plan-save"><span className="business-plan-badge">{saveError?'Erreur d’enregistrement':saving?'Enregistrement…':dirty?'Modifications non enregistrées':'Enregistré pour tous'}</span><Button onClick={onSave} disabled={!dirty||saving}>{saving?'Enregistrement…':'Enregistrer pour tous'}</Button></div></div>
     <div className="business-plan-grid">
       <Card className="assumption-card"><h3>Hypothèses d’acquisition</h3><div className="assumption-fields">
         <label>Valeur de la société<input type="number" value={value.companyValue} step="100000" onChange={event => updateField('companyValue', updateNumber(event))}/><small>{euroAmount(value.companyValue)} €</small></label>
