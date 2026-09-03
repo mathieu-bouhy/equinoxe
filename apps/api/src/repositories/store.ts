@@ -57,7 +57,8 @@ export class Store {
   }
   async bootstrap(){
     await this.database?.bootstrap();
-    if(process.env.POSTGRES_IMPORT_FROM_JSON==='true')await Promise.all(this.postgresFiles.map(file=>file.importLegacy()));
+    // Les imports JSON sont des migrations ponctuelles, jamais une étape de
+    // démarrage : un redéploiement ne doit en aucun cas écraser PostgreSQL.
     await this.getMedipostBusinessPlanAssumptions();
     const companies=await this.companies.read(),now=new Date().toISOString();
     const ensureCompany=async(slug:string,name:string)=>{let item=companies.find(c=>c.slug===slug);if(!item){item={id:crypto.randomUUID(),slug,name,status:'active' as const,connectorType:'odoo' as const,createdAt:now,updatedAt:now};companies.push(item);await this.companies.write(companies)}return item};
@@ -141,7 +142,7 @@ export class Store {
     return merged;
   }
   async saveMedipostBusinessPlanAssumptions(values:Omit<MedipostBusinessPlanAssumptions,'updatedAt'|'updatedByUserId'>,userId:string){
-    const previous=await this.getMedipostBusinessPlanAssumptions(),saved={...previous,...values,updatedAt:new Date().toISOString(),updatedByUserId:userId};
-    await this.medipostBusinessPlanAssumptions.write([saved]);return saved;
+    await this.getMedipostBusinessPlanAssumptions();
+    return this.medipostBusinessPlanAssumptions.mutate(current=>{const saved={...current[0],...values,updatedAt:new Date().toISOString(),updatedByUserId:userId};return {values:[saved],result:saved};});
   }
 }

@@ -49,6 +49,19 @@ export class PostgresDatabase {
       ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
     `;
   }
+
+  async mutate<T,R>(key:string,schema:ZodType<T[]>,legacy:JsonFile<T>,operation:(values:T[])=>Promise<{values:T[];result:R}>|{values:T[];result:R}):Promise<R>{
+    // Ensure the document exists before acquiring its row lock. Every later
+    // read-modify-write is serialized by PostgreSQL, including between the
+    // local API and Render, so a login can no longer erase a newly-created user.
+    await this.read(key,schema,legacy);
+    return await this.sql.begin(async transaction=>{
+      const rows=await transaction<{data:unknown}[]>`SELECT data FROM equinoxe_documents WHERE key = ${key} FOR UPDATE`;
+      const current=schema.parse(rows[0]?.data),next=await operation(current),validated=schema.parse(next.values);
+      await transaction`UPDATE equinoxe_documents SET data = ${transaction.json(validated as never)}, updated_at = NOW() WHERE key = ${key}`;
+      return next.result;
+    }) as R;
+  }
 }
 
 export class PostgresFile<T> implements Collection<T> {
@@ -76,5 +89,9 @@ export class PostgresFile<T> implements Collection<T> {
 
   write(values: T[]): Promise<void> {
     return this.database.write(this.name, values);
+  }
+
+  mutate<R>(operation:(values:T[])=>Promise<{values:T[];result:R}>|{values:T[];result:R}):Promise<R>{
+    return this.database.mutate(this.name,this.schema,this.legacy,operation);
   }
 }
