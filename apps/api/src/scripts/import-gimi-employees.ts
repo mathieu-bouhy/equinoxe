@@ -36,7 +36,7 @@ const now=new Date().toISOString();
 const codes=await store.analyticAllocationCodes.mutate(current=>{
   const companyCodes=current.filter(item=>item.companyId===company.id);
   const ensure=(label:string,values:Pick<AnalyticAllocationCode,'intrusion'|'fireInstallation'|'fireMaintenance'|'led'>)=>{
-    const existing=companyCodes.find(item=>normalize(item.label)===normalize(label));
+    const target=normalize(label),existing=companyCodes.find(item=>target.includes('nombre')&&target.includes('employe')?normalize(item.label).includes('nombre')&&normalize(item.label).includes('employe'):normalize(item.label)===target);
     if(existing)return existing;
     const created:AnalyticAllocationCode={id:crypto.randomUUID(),companyId:company.id,label,...values,order:companyCodes.length,createdAt:now,updatedAt:now};
     companyCodes.push(created);
@@ -44,6 +44,7 @@ const codes=await store.analyticAllocationCodes.mutate(current=>{
   };
   ensure('Incendie maintenance',{intrusion:0,fireInstallation:0,fireMaintenance:100,led:0});
   ensure('Incendie installation',{intrusion:0,fireInstallation:100,fireMaintenance:0,led:0});
+  ensure('Au nombre d’employés',{intrusion:25,fireInstallation:25,fireMaintenance:25,led:25});
   return {values:[...current.filter(item=>item.companyId!==company.id),...companyCodes],result:companyCodes};
 });
 const maintenanceCode=codes.find(item=>normalize(item.label).includes('incendie maintenance'))!;
