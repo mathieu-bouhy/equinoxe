@@ -9,6 +9,7 @@ export interface CompanyAccess { userId:string; companyId:string; createdAt:stri
 export interface DashboardDefinition { id:string; companyId:string; slug:string; label:string; order:number; status:Status }
 export type HoursClient = 'Gimi'|'Eurodrill'|null;
 export interface TimeEntry { id:string; sourceCalendar:string; sourceEventId:string; title:string; start:string; end:string; attendees:Array<{name:string;email:string|null}>; client:HoursClient; correctedHours:number|null; importedAt:string }
+export interface BillingSettings { hourlyRate:number; diverseHours:number; updatedAt:string; updatedByUserId:string|null }
 export interface IntegrationMetadata { id:string; companyId:string; provider:'odoo'|'rest'; status:'connected'|'disconnected'|'not_configured'; baseUrl:string|null; database:string|null; lastTestAt:string|null; lastError:string|null; managedByEnvironment:boolean }
 export interface ProfitLossAccount { id:string; code:string; label:string; values:Record<string,number>; source?:'odoo'|'history' }
 export interface HistoricalAccountBalance { companyId:string; accountCode:string; label:string; year:number; amount:number; importedAt:string; sourceFile:string }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { medipostBusinessPlanDefaults, type BfrSection, type Company, type CompanyAccess, type DashboardDefinition, type HistoricalAccountBalance, type IntegrationMetadata, type MedipostBusinessPlanAssumptions, type ProfitLossSection, type ProfitLossSubsection, type ReportSettings, type TimeEntry, type User } from '@equinoxe/shared';
+import { medipostBusinessPlanDefaults, type BfrSection, type BillingSettings, type Company, type CompanyAccess, type DashboardDefinition, type HistoricalAccountBalance, type IntegrationMetadata, type MedipostBusinessPlanAssumptions, type ProfitLossSection, type ProfitLossSubsection, type ReportSettings, type TimeEntry, type User } from '@equinoxe/shared';
 import { JsonFile } from './json-file';
 import type { Collection } from './collection';
 import { PostgresDatabase, PostgresFile } from './postgres-file';
@@ -16,6 +16,7 @@ const historicalBalance=z.object({companyId:z.string(),accountCode:z.string(),la
 const reportSettings=z.object({companyId:z.string(),lastClosedMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),updatedAt:z.string()});
 const bfrSection=z.object({id:z.string(),companyId:z.string(),label:z.string(),sign:z.enum(['add','subtract']),prefixes:z.array(z.string().regex(/^\d{1,12}$/)),order:z.number(),createdAt:z.string(),updatedAt:z.string()});
 const timeEntry=z.object({id:z.string(),sourceCalendar:z.string(),sourceEventId:z.string(),title:z.string(),start:z.string(),end:z.string(),attendees:z.array(z.object({name:z.string(),email:z.string().nullable()})),client:z.enum(['Gimi','Eurodrill']).nullable(),correctedHours:z.number().nonnegative().nullable().optional().default(null),importedAt:z.string()});
+const billingSettings=z.object({hourlyRate:z.number().finite().nonnegative(),diverseHours:z.number().finite().nonnegative(),updatedAt:z.string(),updatedByUserId:z.string().nullable()});
 const forecastValues=z.object({2026:z.number().finite(),2027:z.number().finite(),2028:z.number().finite()});
 export const medipostBusinessPlanAssumptions=z.object({growth:forecastValues,oldRent:z.number().finite().default(138000),newRent:z.number().finite().default(208847),salaryDifference:z.number().finite().default(-76000),rentDifference:forecastValues,outgoingExecutiveSalary:forecastValues,incomingExecutiveSalary:forecastValues,companyValue:z.number().finite(),cashExtraction:z.number().finite(),loanAmount:z.number().finite(),loanYears:z.number().finite().positive(),loanRate:z.number().finite(),workingCapitalRate:z.number().finite(),capex:forecastValues.default({2026:284966,2027:299214,2028:314175}),rates:z.record(z.string(),forecastValues),updatedAt:z.string(),updatedByUserId:z.string().nullable()});
 
@@ -31,7 +32,7 @@ const calculationSpecs:CalculationSpec[]=[
 const displayOrder=['Chiffre d’affaires','Marchandises','Marge brute','Sous-traitance','Services et biens divers','Personnel','Charges d’exploitation','Produits d’exploitation','Coûts hors achats','EBITDA','Amortissements','Résultat d’exploitation','Financier','Résultat avant impôts','Impôts','Résultat après impôts'];
 
 export class Store {
-  users:Collection<User>;companies:Collection<Company>;access:Collection<CompanyAccess>;dashboards:Collection<DashboardDefinition>;integrations:Collection<IntegrationMetadata>;pnlSections:Collection<ProfitLossSection>;pnlSubsections:Collection<ProfitLossSubsection>;historicalBalances:Collection<HistoricalAccountBalance>;reportSettings:Collection<ReportSettings>;bfrSections:Collection<BfrSection>;timeEntries:Collection<TimeEntry>;medipostBusinessPlanAssumptions:Collection<MedipostBusinessPlanAssumptions>;
+  users:Collection<User>;companies:Collection<Company>;access:Collection<CompanyAccess>;dashboards:Collection<DashboardDefinition>;integrations:Collection<IntegrationMetadata>;pnlSections:Collection<ProfitLossSection>;pnlSubsections:Collection<ProfitLossSubsection>;historicalBalances:Collection<HistoricalAccountBalance>;reportSettings:Collection<ReportSettings>;bfrSections:Collection<BfrSection>;timeEntries:Collection<TimeEntry>;billingSettings:Collection<BillingSettings>;medipostBusinessPlanAssumptions:Collection<MedipostBusinessPlanAssumptions>;
   private readonly database?:PostgresDatabase;
   private readonly postgresFiles:Array<PostgresFile<unknown>>=[];
   constructor(dir:string,databaseUrl?:string){
@@ -53,7 +54,18 @@ export class Store {
     this.reportSettings=collection<ReportSettings>('report-settings.json',z.array(reportSettings),()=>[]);
     this.bfrSections=collection<BfrSection>('bfr-sections.json',z.array(bfrSection),()=>[]);
     this.timeEntries=collection<TimeEntry>('time-entries.json',z.array(timeEntry) as unknown as z.ZodType<TimeEntry[]>,()=>[]);
+    this.billingSettings=collection<BillingSettings>('billing-settings.json',z.array(billingSettings),()=>[]);
     this.medipostBusinessPlanAssumptions=collection<MedipostBusinessPlanAssumptions>('medipost-business-plan-assumptions.json',z.array(medipostBusinessPlanAssumptions) as unknown as z.ZodType<MedipostBusinessPlanAssumptions[]>,()=>[]);
+  }
+  async getBillingSettings(){
+    const existing=(await this.billingSettings.read())[0];
+    if(existing)return existing;
+    const created:BillingSettings={hourlyRate:90,diverseHours:8,updatedAt:new Date().toISOString(),updatedByUserId:null};
+    return this.billingSettings.mutate(current=>current[0]?{values:current,result:current[0]}:{values:[created],result:created});
+  }
+  async saveBillingSettings(values:Pick<BillingSettings,'hourlyRate'|'diverseHours'>,userId:string){
+    await this.getBillingSettings();
+    return this.billingSettings.mutate(current=>{const saved={...current[0],...values,updatedAt:new Date().toISOString(),updatedByUserId:userId};return {values:[saved],result:saved};});
   }
   async bootstrap(){
     await this.database?.bootstrap();
