@@ -35,6 +35,8 @@ export type BfrSign = 'add'|'subtract';
 export interface BfrSection { id:string; companyId:string; label:string; sign:BfrSign; prefixes:string[]; order:number; createdAt:string; updatedAt:string }
 /** Clé de ventilation des frais vers les départements opérationnels de Jimmy. */
 export interface AnalyticAllocationCode { id:string; companyId:string; label:string; intrusion:number; fireInstallation:number; fireMaintenance:number; led:number; order:number; createdAt:string; updatedAt:string }
+/** Affectation d'un compte de résultat Odoo à une clé de répartition. */
+export interface AccountAnalyticAllocation { id:string; companyId:string; odooAccountId:string; accountCode:string; accountLabel:string; profitLossSectionId:string|null; profitLossSectionLabel:string|null; analyticAllocationCodeId:string|null; createdAt:string; updatedAt:string }
 /** Copie intégrale d'un classeur source conservée en base, hors dépôt Git. */
 export type SpreadsheetCellValue=string|number|boolean|null;
 export interface SpreadsheetSourceSheet { name:string; rowCount:number; columnCount:number; cells:Array<{address:string;row:number;column:number;value:SpreadsheetCellValue;formula:string|null}> }

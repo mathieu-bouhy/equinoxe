@@ -94,6 +94,11 @@ export class OdooConnector {
    * for application data and its allow-list rejects every write method.
    */
   async testConnection() { await this.authenticate(); return { provider: 'odoo' as const, connected: true, readOnlyEnforced: true }; }
+  async getProfitLossAccounts() {
+    const uid=await this.authenticate();
+    const accounts=await this.call(uid,'account.account','search_read',[['|',['code','=like','6%'],['code','=like','7%']]],{fields:['code','name','account_type'],order:'code asc',context:{active_test:false}}) as Account[];
+    return accounts.filter(account=>isProfitLossAccountCode(account.code)&&/^[67]/.test(account.code)).map(account=>({id:String(account.id),code:account.code as string,label:typeof account.name==='string'&&account.name.trim()?account.name:'Compte sans libellé'})).sort((a,b)=>a.code.localeCompare(b.code,'fr-BE',{numeric:true}));
+  }
   async getAccountEntries(accountId: string, year: number, includeDraftInvoices = false) {
     const uid = await this.authenticate();
     const stateDomain = includeDraftInvoices ? ['parent_state', 'in', ['posted', 'draft']] : ['parent_state', '=', 'posted'];
