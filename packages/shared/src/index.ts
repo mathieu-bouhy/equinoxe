@@ -33,6 +33,14 @@ export interface BalanceReport { years:number[]; assets:BalanceLine[]; liabiliti
 export type BfrSign = 'add'|'subtract';
 /** Configurable operating working-capital grouping. `subtract` denotes an operating liability. */
 export interface BfrSection { id:string; companyId:string; label:string; sign:BfrSign; prefixes:string[]; order:number; createdAt:string; updatedAt:string }
+/** Clé de ventilation des frais vers les départements opérationnels de Jimmy. */
+export interface AnalyticAllocationCode { id:string; companyId:string; label:string; intrusion:number; fireInstallation:number; fireMaintenance:number; led:number; order:number; createdAt:string; updatedAt:string }
+/** Copie intégrale d'un classeur source conservée en base, hors dépôt Git. */
+export type SpreadsheetCellValue=string|number|boolean|null;
+export interface SpreadsheetSourceSheet { name:string; rowCount:number; columnCount:number; cells:Array<{address:string;row:number;column:number;value:SpreadsheetCellValue;formula:string|null}> }
+export interface SpreadsheetSourceDocument { id:string; companyId:string; kind:'employee-workbook'; sourceUrl:string; fileName:string; mimeType:string; contentBase64:string; sha256:string; sheetNames:string[]; sheets:SpreadsheetSourceSheet[]; importedAt:string }
+/** Vue normalisée des employés utilisée pour leur affectation analytique. */
+export interface EmployeeAnalyticAllocation { id:string; companyId:string; sourceDocumentId:string; sourceSheet:string; sourceRow:number; firstName:string; lastName:string; fullName:string; entryDate:string|null; function:string|null; annualSalaryCost:number|null; annualCarCost:number|null; analyticAllocationCodeId:string|null; createdAt:string; updatedAt:string }
 export interface BfrLine { id:string; label:string; sign:BfrSign; values:Record<string,number>; variations:Record<string,number|null>; accounts:BalanceAccount[] }
 export interface BfrReport { years:number[]; lines:BfrLine[]; total:Record<string,number>; variation:Record<string,number|null>; generatedAt:string; source:'odoo' }
 export interface CashFlowLine { key:string; label:string; values:Record<string,number>; detail?:string }

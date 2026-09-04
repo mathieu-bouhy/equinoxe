@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { medipostBusinessPlanDefaults, type BfrSection, type BillingSettings, type Company, type CompanyAccess, type DashboardDefinition, type HistoricalAccountBalance, type IntegrationMetadata, type MedipostBusinessPlanAssumptions, type ProfitLossSection, type ProfitLossSubsection, type ReportSettings, type TimeEntry, type User } from '@equinoxe/shared';
+import { medipostBusinessPlanDefaults, type AnalyticAllocationCode, type BfrSection, type BillingSettings, type Company, type CompanyAccess, type DashboardDefinition, type EmployeeAnalyticAllocation, type HistoricalAccountBalance, type IntegrationMetadata, type MedipostBusinessPlanAssumptions, type ProfitLossSection, type ProfitLossSubsection, type ReportSettings, type SpreadsheetSourceDocument, type TimeEntry, type User } from '@equinoxe/shared';
 import { JsonFile } from './json-file';
 import type { Collection } from './collection';
 import { PostgresDatabase, PostgresFile } from './postgres-file';
@@ -15,6 +15,10 @@ const pnlSubsection=z.object({id:z.string(),companyId:z.string(),parentSectionId
 const historicalBalance=z.object({companyId:z.string(),accountCode:z.string(),label:z.string(),year:z.number().int(),amount:z.number(),importedAt:z.string(),sourceFile:z.string()});
 const reportSettings=z.object({companyId:z.string(),lastClosedMonth:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),updatedAt:z.string()});
 const bfrSection=z.object({id:z.string(),companyId:z.string(),label:z.string(),sign:z.enum(['add','subtract']),prefixes:z.array(z.string().regex(/^\d{1,12}$/)),order:z.number(),createdAt:z.string(),updatedAt:z.string()});
+const analyticAllocationCode=z.object({id:z.string(),companyId:z.string(),label:z.string(),intrusion:z.number().finite(),fireInstallation:z.number().finite(),fireMaintenance:z.number().finite(),led:z.number().finite(),order:z.number(),createdAt:z.string(),updatedAt:z.string()});
+const spreadsheetCellValue=z.union([z.string(),z.number().finite(),z.boolean(),z.null()]);
+const spreadsheetSourceDocument=z.object({id:z.string(),companyId:z.string(),kind:z.literal('employee-workbook'),sourceUrl:z.string().url(),fileName:z.string(),mimeType:z.string(),contentBase64:z.string(),sha256:z.string(),sheetNames:z.array(z.string()),sheets:z.array(z.object({name:z.string(),rowCount:z.number().int().nonnegative(),columnCount:z.number().int().nonnegative(),cells:z.array(z.object({address:z.string(),row:z.number().int().positive(),column:z.number().int().positive(),value:spreadsheetCellValue,formula:z.string().nullable()}))})).default([]),importedAt:z.string()});
+const employeeAnalyticAllocation=z.object({id:z.string(),companyId:z.string(),sourceDocumentId:z.string(),sourceSheet:z.string(),sourceRow:z.number().int().positive(),firstName:z.string(),lastName:z.string(),fullName:z.string(),entryDate:z.string().nullable(),function:z.string().nullable(),annualSalaryCost:z.number().finite().nullable(),annualCarCost:z.number().finite().nullable(),analyticAllocationCodeId:z.string().nullable(),createdAt:z.string(),updatedAt:z.string()});
 const timeEntry=z.object({id:z.string(),sourceCalendar:z.string(),sourceEventId:z.string(),title:z.string(),start:z.string(),end:z.string(),attendees:z.array(z.object({name:z.string(),email:z.string().nullable()})),client:z.enum(['Gimi','Eurodrill']).nullable(),correctedHours:z.number().nonnegative().nullable().optional().default(null),importedAt:z.string()});
 const billingSettings=z.object({hourlyRate:z.number().finite().nonnegative(),diverseHours:z.number().finite().nonnegative(),updatedAt:z.string(),updatedByUserId:z.string().nullable()});
 const forecastValues=z.object({2026:z.number().finite(),2027:z.number().finite(),2028:z.number().finite()});
@@ -32,7 +36,7 @@ const calculationSpecs:CalculationSpec[]=[
 const displayOrder=['Chiffre d’affaires','Marchandises','Marge brute','Sous-traitance','Services et biens divers','Personnel','Charges d’exploitation','Produits d’exploitation','Coûts hors achats','EBITDA','Amortissements','Résultat d’exploitation','Financier','Résultat avant impôts','Impôts','Résultat après impôts'];
 
 export class Store {
-  users:Collection<User>;companies:Collection<Company>;access:Collection<CompanyAccess>;dashboards:Collection<DashboardDefinition>;integrations:Collection<IntegrationMetadata>;pnlSections:Collection<ProfitLossSection>;pnlSubsections:Collection<ProfitLossSubsection>;historicalBalances:Collection<HistoricalAccountBalance>;reportSettings:Collection<ReportSettings>;bfrSections:Collection<BfrSection>;timeEntries:Collection<TimeEntry>;billingSettings:Collection<BillingSettings>;medipostBusinessPlanAssumptions:Collection<MedipostBusinessPlanAssumptions>;
+  users:Collection<User>;companies:Collection<Company>;access:Collection<CompanyAccess>;dashboards:Collection<DashboardDefinition>;integrations:Collection<IntegrationMetadata>;pnlSections:Collection<ProfitLossSection>;pnlSubsections:Collection<ProfitLossSubsection>;historicalBalances:Collection<HistoricalAccountBalance>;reportSettings:Collection<ReportSettings>;bfrSections:Collection<BfrSection>;analyticAllocationCodes:Collection<AnalyticAllocationCode>;spreadsheetSourceDocuments:Collection<SpreadsheetSourceDocument>;employeeAnalyticAllocations:Collection<EmployeeAnalyticAllocation>;timeEntries:Collection<TimeEntry>;billingSettings:Collection<BillingSettings>;medipostBusinessPlanAssumptions:Collection<MedipostBusinessPlanAssumptions>;
   private readonly database?:PostgresDatabase;
   private readonly postgresFiles:Array<PostgresFile<unknown>>=[];
   constructor(dir:string,databaseUrl?:string){
@@ -53,6 +57,9 @@ export class Store {
     this.historicalBalances=collection<HistoricalAccountBalance>('lonneux-historical-balances.json',z.array(historicalBalance),()=>[]);
     this.reportSettings=collection<ReportSettings>('report-settings.json',z.array(reportSettings),()=>[]);
     this.bfrSections=collection<BfrSection>('bfr-sections.json',z.array(bfrSection),()=>[]);
+    this.analyticAllocationCodes=collection<AnalyticAllocationCode>('analytic-allocation-codes.json',z.array(analyticAllocationCode),()=>[]);
+    this.spreadsheetSourceDocuments=collection<SpreadsheetSourceDocument>('spreadsheet-source-documents.json',z.array(spreadsheetSourceDocument) as unknown as z.ZodType<SpreadsheetSourceDocument[]>,()=>[]);
+    this.employeeAnalyticAllocations=collection<EmployeeAnalyticAllocation>('employee-analytic-allocations.json',z.array(employeeAnalyticAllocation),()=>[]);
     this.timeEntries=collection<TimeEntry>('time-entries.json',z.array(timeEntry) as unknown as z.ZodType<TimeEntry[]>,()=>[]);
     this.billingSettings=collection<BillingSettings>('billing-settings.json',z.array(billingSettings),()=>[]);
     this.medipostBusinessPlanAssumptions=collection<MedipostBusinessPlanAssumptions>('medipost-business-plan-assumptions.json',z.array(medipostBusinessPlanAssumptions) as unknown as z.ZodType<MedipostBusinessPlanAssumptions[]>,()=>[]);
