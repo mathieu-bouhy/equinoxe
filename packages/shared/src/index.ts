@@ -11,6 +11,7 @@ export type HoursClient = 'Gimi'|'Eurodrill'|null;
 export interface TimeEntry { id:string; sourceCalendar:string; sourceEventId:string; title:string; start:string; end:string; attendees:Array<{name:string;email:string|null}>; client:HoursClient; correctedHours:number|null; importedAt:string }
 export interface BillingSettings { hourlyRate:number; diverseHours:number; updatedAt:string; updatedByUserId:string|null }
 export interface IntegrationMetadata { id:string; companyId:string; provider:'odoo'|'rest'; status:'connected'|'disconnected'|'not_configured'; baseUrl:string|null; database:string|null; lastTestAt:string|null; lastError:string|null; managedByEnvironment:boolean }
+export * from './analytic-profit-loss';
 export interface ProfitLossAccount { id:string; code:string; label:string; values:Record<string,number>; source?:'odoo'|'history' }
 export interface HistoricalAccountBalance { companyId:string; accountCode:string; label:string; year:number; amount:number; importedAt:string; sourceFile:string }
 export interface AccountingEntry { id:string; date:string; label:string; partner:string|null; debit:number; credit:number; odooUrl:string|null }
@@ -23,18 +24,22 @@ export interface ProfitLossSubsection { id:string; companyId:string; parentSecti
 export interface ProfitLossSubsectionLine { id:string; label:string; values:Record<string,number>; accounts:ProfitLossAccount[] }
 export interface ProfitLossLine { key:string; label:string; values:Record<string,number>; accounts?:ProfitLossAccount[]; subsections?:ProfitLossSubsectionLine[] }
 export interface ProfitLossReport { years:number[]; lines:ProfitLossLine[]; generatedAt:string; source:'odoo' }
+export interface MarginAnalysisRow { key:string; label:string; values:Record<string,number>; accounts:ProfitLossAccount[] }
+export interface MarginAnalysisBlock { key:'revenue'|'purchases'|'margin'; label:string; rows:MarginAnalysisRow[]; totals:Record<string,number> }
+export interface MarginAnalysisReport { years:number[]; lastClosedMonth:string; extrapolatedYear:number; factor:number; blocks:MarginAnalysisBlock[]; generatedAt:string }
 export interface ProfitLossMonthlyReport { year:number; months:string[]; lines:Array<{key:string;label:string;values:Record<string,number>}>; generatedAt:string; source:'odoo' }
 export interface ReportSettings { companyId:string; lastClosedMonth:string; updatedAt:string }
 export interface ProfitLossPeriod { key:string; label:string; start:string; end:string }
 export interface ProfitLossLtmReport { periods:ProfitLossPeriod[]; lines:ProfitLossLine[]; generatedAt:string; source:'odoo' }
 export interface BalanceAccount { id:string; code:string; label:string; values:Record<string,number> }
 export interface BalanceLine { key:string; label:string; values:Record<string,number>; accounts:BalanceAccount[] }
-export interface BalanceReport { years:number[]; assets:BalanceLine[]; liabilities:BalanceLine[]; generatedAt:string; source:'odoo' }
+export interface BalancePeriod { year:number; source:'odoo'|'history'; asOf:string; status:'available'|'incomplete'|'unavailable'; warnings:string[] }
+export interface BalanceReport { years:number[]; assets:BalanceLine[]; liabilities:BalanceLine[]; generatedAt:string; source:'odoo'|'history'|'mixed'; periods?:BalancePeriod[] }
 export type BfrSign = 'add'|'subtract';
 /** Configurable operating working-capital grouping. `subtract` denotes an operating liability. */
 export interface BfrSection { id:string; companyId:string; label:string; sign:BfrSign; prefixes:string[]; order:number; createdAt:string; updatedAt:string }
 /** Clé de ventilation des frais vers les départements opérationnels de Jimmy. */
-export interface AnalyticAllocationCode { id:string; companyId:string; label:string; intrusion:number; fireInstallation:number; fireMaintenance:number; led:number; order:number; createdAt:string; updatedAt:string }
+export interface AnalyticAllocationCode { id:string; companyId:string; label:string; basis?:'salary'|'vehicle'; intrusion:number; fireInstallation:number; fireMaintenance:number; led:number; order:number; createdAt:string; updatedAt:string }
 /** Affectation d'un compte de résultat Odoo à une clé de répartition. */
 export interface AccountAnalyticAllocation { id:string; companyId:string; odooAccountId:string; accountCode:string; accountLabel:string; profitLossSectionId:string|null; profitLossSectionLabel:string|null; analyticAllocationCodeId:string|null; createdAt:string; updatedAt:string }
 /** Copie intégrale d'un classeur source conservée en base, hors dépôt Git. */
@@ -42,7 +47,7 @@ export type SpreadsheetCellValue=string|number|boolean|null;
 export interface SpreadsheetSourceSheet { name:string; rowCount:number; columnCount:number; cells:Array<{address:string;row:number;column:number;value:SpreadsheetCellValue;formula:string|null}> }
 export interface SpreadsheetSourceDocument { id:string; companyId:string; kind:'employee-workbook'; sourceUrl:string; fileName:string; mimeType:string; contentBase64:string; sha256:string; sheetNames:string[]; sheets:SpreadsheetSourceSheet[]; importedAt:string }
 /** Vue normalisée des employés utilisée pour leur affectation analytique. */
-export interface EmployeeAnalyticAllocation { id:string; companyId:string; sourceDocumentId:string; sourceSheet:string; sourceRow:number; firstName:string; lastName:string; fullName:string; entryDate:string|null; function:string|null; annualSalaryCost:number|null; annualCarCost:number|null; analyticAllocationCodeId:string|null; createdAt:string; updatedAt:string }
+export interface EmployeeAnalyticAllocation { id:string; companyId:string; sourceDocumentId:string; sourceSheet:string; sourceRow:number; firstName:string; lastName:string; fullName:string; entryDate:string|null; endDate?:string|null; function:string|null; annualSalaryCost:number|null; annualCarCost:number|null; analyticAllocationCodeId:string|null; createdAt:string; updatedAt:string }
 export interface BfrLine { id:string; label:string; sign:BfrSign; values:Record<string,number>; variations:Record<string,number|null>; accounts:BalanceAccount[] }
 export interface BfrReport { years:number[]; lines:BfrLine[]; total:Record<string,number>; variation:Record<string,number|null>; generatedAt:string; source:'odoo' }
 export interface CashFlowLine { key:string; label:string; values:Record<string,number>; detail?:string }
@@ -81,3 +86,6 @@ export const medipostBusinessPlanDefaults=():Omit<MedipostBusinessPlanAssumption
 export interface PublicUser { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; createdAt:string; updatedAt:string; lastLoginAt:string|null }
 export const toPublicUser = ({passwordHash:_hash,passwordSalt:_salt,...user}:User):PublicUser => user;
 export type ApiResponse<T>={data:T}|{error:{code:string;message:string}};
+export * from './employee-cost-allocation';
+export interface AccountMonthlyAmounts { accountId:string; values:Record<string,number> }
+export type { CashMovement, CashAccount, CashHistorySnapshot, CashDay, CashMonth, CashEvolutionReport } from './cash-history';

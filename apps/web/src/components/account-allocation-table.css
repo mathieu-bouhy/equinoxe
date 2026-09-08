@@ -1,0 +1,17 @@
+.account-allocation-table .allocation-section th {
+  background: var(--surface-warm, #fff5e2);
+  color: var(--text, #3b1f12);
+  padding: 18px 22px;
+  text-align: left;
+  border-top: 1px solid var(--border, #eadbc6);
+  font-size: 15px;
+}
+.account-allocation-table .allocation-section small {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+  color: var(--text-secondary, #6d5a46);
+  font-size: 11px;
+}
+.account-allocation-table th[scope="row"] { text-align: left; }
+.account-allocation-table select { min-width: 220px; }
