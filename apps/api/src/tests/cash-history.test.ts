@@ -81,14 +81,15 @@ test('connecteur : pagination intégrale, archived inclus, posted seul, ouvertur
 
 const dirs: string[] = [];
 afterEach(async () => { for (const dir of dirs.splice(0)) await rm(dir,{recursive:true,force:true}); });
-test('API : import, relecture, export, contrôle, droits lecteur et accès retiré', async () => {
+for (const slug of ['gimi', 'eurodrill']) test(`API ${slug} : import, relecture, export, contrôle, droits lecteur et accès retiré`, async () => {
   const dir = await mkdtemp(join(tmpdir(),'equinoxe-cash-test-')); dirs.push(dir);
   const store = new Store(dir), auth = new AuthService(store); await auth.bootstrap();
   const company = (await store.companies.read()).find(row => row.slug === 'gimi')!;
+  company.slug = slug; await store.companies.write((await store.companies.read()).map(row=>row.id===company.id?company:row));
   const snapshot = { ...fixture(), companyId: company.id }; let saved: CashHistorySnapshot | null = null, imports = 0;
   const repository: CashHistoryStorage = { read: async () => saved, save: async value => { saved = structuredClone(value); } };
   const connector = { getCashHistory: async () => { imports++; return snapshot; } } as unknown as OdooConnector;
-  const app = createApp(store, auth, connector, repository);
+  const app = createApp(store, auth, connector, repository, undefined, () => connector);
   const login = await app(new Request('http://api/v1/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'admin@equinoxe.local',password:'change-me-now'})}));
   const cookie = login.headers.get('set-cookie')!.split(';')[0], url = `http://api/v1/companies/${company.id}/cash-history`;
   const call = (method = 'GET', suffix = '') => app(new Request(url + suffix,{method,headers:{cookie}}));
@@ -97,7 +98,7 @@ test('API : import, relecture, export, contrôle, droits lecteur et accès retir
   expect((await (await call()).json()).data).toBeNull(); expect(imports).toBe(0);
   expect((await call('POST')).status).toBe(200); expect(imports).toBe(1);
   expect((await (await call()).json()).data.months).toHaveLength(31); expect(imports).toBe(1);
-  const csv = await call('GET','/export'); expect(csv.status).toBe(200); expect(await csv.text()).toContain('2026-07;31;');
+  const csv = await call('GET','/export'); expect(csv.status).toBe(200); expect(csv.headers.get('content-disposition')).toContain(`${slug}-tresorerie-`); expect(await csv.text()).toContain('2026-07;31;');
   snapshot.monthlyControls[0].closing = 999; expect((await call('POST')).status).toBe(409);
   expect((await (await call()).json()).data.months[0].difference).toBe(0);
   const admin = (await store.users.read())[0]; await store.users.write([{...admin,role:'viewer'}]);
@@ -105,4 +106,20 @@ test('API : import, relecture, export, contrôle, droits lecteur et accès retir
   await store.access.write([{userId:admin.id,companyId:company.id,createdAt:new Date().toISOString()}]);
   expect((await call()).status).toBe(200); expect((await call('GET','/export')).status).toBe(200); expect((await call('POST')).status).toBe(403);
   await store.access.write([]); expect((await call()).status).toBe(403); expect((await call('GET','/export')).status).toBe(403);
+});
+
+test('détail par compte : sommes rapprochées, soldes reportés et comptes nuls conservés', () => {
+  const snapshot=fixture();
+  snapshot.accounts.push({id:2,code:'550007',label:'Compte créditeur',opening:-30,closing:-30},{id:3,code:'570000',label:'Caisse inactive',opening:0,closing:0});
+  snapshot.movements.push({...movement(3,'2024-01-15',.1,.2),accountId:2},{...movement(4,'2024-02-01',0,50),accountId:2});
+  const report=buildCashEvolution(snapshot,'2024-02-29');
+  for(const month of report.months){
+    expect(month.accounts).toHaveLength(3);
+    for(const field of ['opening','movement','average','closing'] as const)expect(month.accounts.reduce((sum,a)=>sum+a[field],0)).toBeCloseTo(month[field],9);
+    for(const account of month.accounts){expect(account.opening+account.debit-account.credit).toBeCloseTo(account.closing,9);expect(account.debit-account.credit).toBeCloseTo(account.movement,9);}
+  }
+  expect(report.months[0].accounts[1].closing).toBe(-30.1);
+  expect(report.months[1].accounts[1].opening).toBe(-30.1);
+  expect(report.months[1].accounts[1].average).toBe(-80.1);
+  expect(report.months[0].accounts[2]).toMatchObject({opening:0,average:0,closing:0});
 });

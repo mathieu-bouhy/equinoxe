@@ -1,3 +1,4 @@
+import { RatioLegend } from '../components/RatioLegend';
 import { Fragment, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -20,7 +21,7 @@ export function MarginAnalysis({companyId}:{companyId:string}){
   return <Card className="profit-loss margin-analysis">
     <div className="profit-loss-heading"><div><p className="eyebrow">Gimi · comptabilité analytique</p><h2>Analyse de marge par département</h2><p>Chiffre d’affaires, marchandises et marge brute selon les clés de répartition enregistrées.</p></div><div className="unit-note">Montants en milliers d’euros, arrondis</div></div>
     <p className="report-note">{report.extrapolatedYear} extrapolé : cumul de janvier au mois {report.lastClosedMonth.slice(5)} × {report.factor.toLocaleString('fr-BE',{maximumFractionDigits:3})}. Les deux années précédentes sont réalisées sur douze mois.</p>
-    <div className="report-table"><table className="margin-matrix">
+    <RatioLegend basis="du CA total ; pour la marge d’un département, de son propre CA"/><div className="report-table"><table className="margin-matrix">
       <colgroup><col className="margin-label-col"/>{report.years.map(year=><col key={year}/>)}</colgroup>
       <thead><tr><th scope="col">Rubrique / département</th>{report.years.map(year=><th key={year} scope="col">{year}<small>{year===report.extrapolatedYear?'Extrapolé':'Réalisé'}</small></th>)}</tr></thead>
       {report.blocks.map(block=><tbody key={block.key}>
@@ -29,10 +30,10 @@ export function MarginAnalysis({companyId}:{companyId:string}){
           const key=`${block.key}:${row.key}`,expanded=open.has(key);
           return <Fragment key={key}><tr className={block.key==='margin'?'margin-result':''}>
             <th scope="row">{row.accounts.length?<button className="drilldown-button" onClick={()=>toggle(key)} aria-expanded={expanded}>{expanded?<ChevronDown size={16}/>:<ChevronRight size={16}/>}<span>{row.label}</span><small>{row.accounts.length} comptes</small></button>:<span className="margin-empty-label">{row.label}</span>}</th>
-            {report.years.map(year=><td key={year}><strong>{format(row.values[year])}</strong><small>{rate(row.values[year],block.key==='margin'?(revenue.rows.find(item=>item.key===row.key)?.values[year]??0):revenue.totals[year])}{block.key==='margin'?' du CA du département':' du CA total'}</small></td>)}
-          </tr>{expanded&&row.accounts.map(account=><tr className="margin-account" key={account.id}><th scope="row"><span>{account.code}</span> {account.label}</th>{report.years.map(year=><td key={year}>{format(account.values[year]??0)}<small>{rate(account.values[year]??0,revenue.totals[year])} du CA total</small></td>)}</tr>)}</Fragment>;
+            {report.years.map(year=><td key={year}><strong>{format(row.values[year])}</strong><small className="ratio-value">{rate(row.values[year],block.key==='margin'?(revenue.rows.find(item=>item.key===row.key)?.values[year]??0):revenue.totals[year])}</small></td>)}
+          </tr>{expanded&&row.accounts.map(account=><tr className="margin-account" key={account.id}><th scope="row"><span>{account.code}</span> {account.label}</th>{report.years.map(year=><td key={year}>{format(account.values[year]??0)}<small className="ratio-value">{rate(account.values[year]??0,revenue.totals[year])}</small></td>)}</tr>)}</Fragment>;
         })}
-        <tr className="margin-total"><th scope="row">Total {block.label.toLocaleLowerCase('fr-BE')}</th>{report.years.map(year=><td key={year}><strong>{format(block.totals[year])}</strong><small>{rate(block.totals[year],revenue.totals[year])} du CA total</small></td>)}</tr>
+        <tr className="margin-total"><th scope="row">Total {block.label.toLocaleLowerCase('fr-BE')}</th>{report.years.map(year=><td key={year}><strong>{format(block.totals[year])}</strong><small className="ratio-value">{rate(block.totals[year],revenue.totals[year])}</small></td>)}</tr>
       </tbody>)}
     </table></div>
     <p className="report-note">Marge brute = chiffre d’affaires + marchandises, les charges étant affichées en négatif. « Autres » regroupe les comptes sans clé valide. Le détail affiche la part du compte allouée au département, pas son montant intégral lorsqu’une clé est partagée.</p>

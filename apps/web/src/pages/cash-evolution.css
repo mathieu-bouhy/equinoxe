@@ -28,3 +28,20 @@
 .cash-daily-table { max-height: 480px; overflow: auto; }
 .cash-evolution summary { cursor: pointer; font-weight: 600; color: #3b1f12; }
 @media (max-width: 650px) { .cash-evolution-summary { grid-template-columns: 1fr; gap: 8px; } .cash-evolution-summary > div { padding: 12px 16px; } .cash-chart-legend small { flex-basis: 100%; margin-left: 0; } }
+.cash-account-detail { margin-bottom: 24px; text-align: left; white-space: normal; }
+.cash-account-detail p { font-weight: 400; color: #796653; max-width: 900px; }
+.cash-account-scroll { max-height: 480px; overflow: auto; }
+.cash-evolution .cash-account-table { width: 100%; min-width: 800px; table-layout: fixed; }
+.cash-evolution .cash-account-table th,
+.cash-evolution .cash-account-table td { width: 15%; min-width: 0; }
+.cash-evolution .cash-account-table th:first-child,
+.cash-evolution .cash-account-table td:first-child { width: 40%; white-space: normal; overflow-wrap: anywhere; }
+.cash-account-table thead th { position: sticky; top: 0; z-index: 2; white-space: normal; overflow-wrap: normal; }
+.cash-account-table tfoot { font-weight: 700; background: #fff4d8; }
+@media (max-width: 650px) {
+  .cash-account-detail, .cash-daily-table { max-width: calc(100vw - 128px); white-space: normal; }
+  .cash-evolution .cash-account-table th:first-child,
+  .cash-evolution .cash-account-table td:first-child { position: static; width: 240px; }
+  .cash-daily-table table { min-width: 520px; }
+  .cash-daily-table th:first-child, .cash-daily-table td:first-child { position: static; min-width: 140px; }
+}

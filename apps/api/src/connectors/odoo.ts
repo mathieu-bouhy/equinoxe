@@ -1,4 +1,7 @@
 import { config, type OdooConnection } from '../config';
+import { loadAccountingCoverage } from './odoo-accounting-coverage';
+import { loadCashAudit } from './odoo-cash-audit';
+import { loadSoConsumables } from './odoo-so-consumables';
 import { buildBalance } from '../services/balance-sheet';
 import type { BalanceAccount, BalanceLine, BalanceReport, BfrReport, BfrSection, CashFlowReport, ProfitLossAccount, ProfitLossLine, ProfitLossLtmReport, ProfitLossMonthlyReport, ProfitLossPeriod, ProfitLossReport, ProfitLossSection, ProfitLossSubsection } from '@equinoxe/shared';
 
@@ -40,6 +43,18 @@ function buildConfiguredLines(keys:string[],sections:ProfitLossSection[],account
 }
 
 export class OdooConnector {
+  async getCashAudit(accountIds: number[], moveIds: number[], through: string) {
+    const uid = await this.authenticate();
+    return loadCashAudit((model, method, args, kwargs) => this.call(uid, model, method, args, kwargs), accountIds, moveIds, through);
+  }
+  async getAccountingCoverage(years: number[]) {
+    const uid = await this.authenticate();
+    return loadAccountingCoverage((model, method, args, kwargs) => this.call(uid, model, method, args, kwargs), years);
+  }
+  async getSoConsumables(companyId:string,through:string,accounts:import('@equinoxe/shared').SoConsumableAccount[]){
+    const uid=await this.authenticate();
+    return loadSoConsumables((model,method,args,kwargs)=>this.call(uid,model,method,args,kwargs),companyId,through,accounts);
+  }
   constructor(private settings: OdooConnection = config.odoo.gimi, private fetcher: typeof fetch = fetch) {}
   configured() { return Boolean(this.settings.baseUrl && this.settings.database && this.settings.username && this.settings.apiKey); }
   getProviderInfo() { return { provider: 'odoo' as const, baseUrl: this.settings.baseUrl ?? null, database: this.settings.database ?? null }; }
@@ -156,11 +171,12 @@ export class OdooConnector {
     groups.forEach((periodGroups,index)=>periodGroups.forEach(group=>{const account=group.account_id?byId.get(group.account_id[0]):undefined;if(!account||!isProfitLossAccountCode(account.code)||typeof group.balance!=='number'||!group.account_id)return;const id=String(group.account_id[0]),previous=details.get(id)??{id,code:account.code,label:String(account.name??group.account_id[1]??'Compte sans libellé'),values:{}};const key=periods[index].key;previous.values[key]=(previous.values[key]??0)-group.balance;details.set(id,previous)}));
     return {periods,lines:buildConfiguredLines(periods.map(period=>period.key),sections,[...details.values()]),generatedAt:new Date().toISOString(),source:'odoo'};
   }
-  async getProfitLossMonths(year: number, sections: ProfitLossSection[] = [], includeDraftInvoices = false): Promise<ProfitLossMonthlyReport> {
+  async getProfitLossMonths(year: number, sections: ProfitLossSection[] = [], includeDraftInvoices = false, asOf?: string): Promise<ProfitLossMonthlyReport> {
+    const end = asOf && year === Number(asOf.slice(0,4)) ? asOf : `${year}-12-31`;
     const uid = await this.authenticate(), stateDomain = includeDraftInvoices ? ['parent_state', 'in', ['posted', 'draft']] : ['parent_state', '=', 'posted'];
-    const groups = await this.call(uid, 'account.move.line', 'read_group', [[stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', `${year}-12-31`]], ['balance'], ['account_id', 'date:month']], { lazy: false }) as MonthlyGroup[];
+    const groups = await this.call(uid, 'account.move.line', 'read_group', [[stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', end]], ['balance'], ['account_id', 'date:month']], { lazy: false }) as MonthlyGroup[];
     const ids = [...new Set(groups.flatMap(group => group.account_id ? [group.account_id[0]] : []))], accounts = ids.length ? await this.call(uid, 'account.account', 'read', [ids], { fields: ['code', 'name', 'account_type'] }) as Account[] : [], byId = new Map(accounts.map(account => [account.id, account]));
-    const months = Array.from({length:12},(_,index)=>`${year}-${String(index+1).padStart(2,'0')}`), values = new Map<string, Record<string, number>>();
+    const months = Array.from({length:Number(end.slice(5,7))},(_,index)=>`${year}-${String(index+1).padStart(2,'0')}`), values = new Map<string, Record<string, number>>();
     for (const group of groups) { const account = group.account_id ? byId.get(group.account_id[0]) : undefined, dateStart = group.__range?.['date:month']?.from, month = typeof dateStart === 'string' ? dateStart.slice(0,7) : undefined; if (!account || !month || !isProfitLossAccountCode(account.code) || typeof group.balance !== 'number') continue; const section=accountOwner({id:String(group.account_id![0]),code:account.code,label:String(account.name??''),values:{}},sections); if (!section) continue; const row = values.get(section.id) ?? {}; row[month] = (row[month] ?? 0) - group.balance; values.set(section.id,row); }
     const lines=new Map(sections.filter(section=>section.kind==='accounts').map(section=>[section.id,{key:section.id,label:section.label,values:values.get(section.id)??{}}]));
     const make=(section:ProfitLossSection):{key:string;label:string;values:Record<string,number>}=>{const existing=lines.get(section.id);if(existing)return existing;const line={key:section.id,label:section.label,values:Object.fromEntries(months.map(month=>[month,section.formula.reduce((sum,term)=>{const source=sections.find(item=>item.id===term.sectionId);const value=source?(make(source).values[month]??0):0;return sum+(term.operator==='subtract'?-value:value)},0)]))};lines.set(section.id,line);return line};

@@ -1,3 +1,4 @@
+import { RatioLegend, RatioLabel } from '../components/RatioLegend';
 import { useMemo, useState } from 'react';
 import { BarChart3, ExternalLink, FileCheck2, Scale, Target, Users } from 'lucide-react';
 import { Card } from '../components/ui';
@@ -113,7 +114,7 @@ function CompetitorTrend({company}:{company:Competitor}) {
     ['EBITDA', item => amount(item.ebitda)],
     ['EBITDA · % du CA', item => ratio(item.ebitda,item.revenue)],
   ];
-  return <Card className="competitor-trend"><div className="analysis-card-head"><div><p className="eyebrow">Évolution financière</p><h3>{company.name} · exercices disponibles</h3></div><span>Montants en milliers d’euros · ETP en nombre moyen</span></div><div className="analysis-table-wrap"><table className="dossier-table competitor-financial-table"><thead><tr><th>Rubrique</th>{data.map(item => <th key={item.year}>{item.year}</th>)}</tr></thead><tbody>{rows.map(([label,read]) => <tr key={label}><td>{label}</td>{data.map(item => <td key={item.year}>{read(item)}</td>)}</tr>)}</tbody></table></div><p className="analysis-note">Les rubriques détaillées sont affichées uniquement lorsqu’elles figurent dans les comptes source disponibles. Un tiret signifie que le détail n’est pas documenté, et non un montant nul.</p></Card>
+  return <Card className="competitor-trend"><div className="analysis-card-head"><div><p className="eyebrow">Évolution financière</p><h3>{company.name} · exercices disponibles</h3></div><span>Montants en milliers d’euros · ETP en nombre moyen</span></div><RatioLegend/><div className="analysis-table-wrap"><table className="dossier-table competitor-financial-table"><thead><tr><th>Rubrique</th>{data.map(item => <th key={item.year}>{item.year}</th>)}</tr></thead><tbody>{rows.map(([label,read]) => <tr key={label} className={label.includes('% du CA')?'percentage-row':undefined}>{label.includes('% du CA')?<RatioLabel/>:<td>{label}</td>}{data.map(item => <td key={item.year}>{read(item)}</td>)}</tr>)}</tbody></table></div><p className="analysis-note">Les rubriques détaillées sont affichées uniquement lorsqu’elles figurent dans les comptes source disponibles. Un tiret signifie que le détail n’est pas documenté, et non un montant nul.</p></Card>
 }
 
 const marketUnits=[

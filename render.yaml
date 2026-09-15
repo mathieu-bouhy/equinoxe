@@ -18,7 +18,7 @@ services:
       - key: APP_DATA_DIR
         value: /var/data
       # À renseigner avec l'Internal Database URL après la création de PostgreSQL.
-      # La première connexion importe automatiquement les JSON présents sur le disque.
+      # Les imports historiques sont explicites ; un déploiement ne remplace pas PostgreSQL.
       - key: DATABASE_URL
         sync: false
       - key: COOKIE_SECURE
@@ -50,6 +50,14 @@ services:
       - key: LONNEUX_ODOO_USERNAME
         sync: false
       - key: LONNEUX_ODOO_API_KEY
+        sync: false
+      - key: EURODRILL_ODOO_BASE_URL
+        sync: false
+      - key: EURODRILL_ODOO_DATABASE
+        sync: false
+      - key: EURODRILL_ODOO_USERNAME
+        sync: false
+      - key: EURODRILL_ODOO_API_KEY
         sync: false
       - key: ODOO_RPC_TIMEOUT_MS
         value: "15000"

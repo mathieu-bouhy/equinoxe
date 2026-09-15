@@ -4,6 +4,9 @@ export class ApiError extends Error { constructor(public status:number,message:s
 async function request<T>(url:string,init?:RequestInit):Promise<T> { let res:Response;try{res=await fetch(url,{credentials:'include',headers:{'content-type':'application/json',...(init?.headers??{})},...init});}catch{throw new ApiError(0,'Le serveur Equinoxe est indisponible.');}let payload:any;try{payload=await res.json();}catch{throw new ApiError(res.status,'Le serveur Equinoxe ne répond pas correctement.');}if(!res.ok)throw new ApiError(res.status,payload.error?.message??'Une erreur est survenue.');return payload.data; }
 const company=(id:string,path:string)=>`/v1/companies/${id}${path}`;
 export const api={
+  soConsumables:(id:string)=>request<import('@equinoxe/shared').SoConsumablesSnapshot|null>(company(id,'/so-consumables')),
+  recalculateSoConsumables:(id:string)=>request<import('@equinoxe/shared').SoConsumablesSnapshot>(company(id,'/so-consumables'),{method:'POST'}),
+  accountAllocationAmounts:(id:string)=>request<import('@equinoxe/shared').AccountAllocationAmounts>(company(id,'/account-analytic-amounts')),
   analyticProfitLoss:(id:string,mode:import('@equinoxe/shared').AnalyticReportMode,departments:string[])=>request<import('@equinoxe/shared').AnalyticProfitLossReport>(company(id,`/profit-loss/analytic?${new URLSearchParams({mode,departments:departments.join(',')})}`)),
   analyticEntries:(id:string,mode:import('@equinoxe/shared').AnalyticReportMode,departments:string[],account:string,period:string,month?:string)=>request<import('@equinoxe/shared').AnalyticEntriesReport>(company(id,`/profit-loss/analytic/entries?${new URLSearchParams({mode,departments:departments.join(','),account,period,...(month?{month}:{})})}`)),
   cashHistory:(id:string)=>request<import('@equinoxe/shared').CashEvolutionReport|null>(company(id,'/cash-history')),

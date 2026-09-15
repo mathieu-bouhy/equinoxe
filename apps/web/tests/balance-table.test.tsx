@@ -28,3 +28,11 @@ for(const state of ['loading','error'] as const)test(`pont ${state} : le bilan r
   if(state==='error')expect(html).toContain('Le pont de trésorerie est indisponible');
   client.clear();
 });
+test('Eurodrill : bilan autonome sans pont de trésorerie',()=>{
+  const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:Infinity}}});
+  client.setQueryData(['balance','eurodrill'],report);
+  const html=renderToStaticMarkup(<QueryClientProvider client={client}><CompanyBalanceSheet companyId="eurodrill" showCashFlow={false} renderCashFlow={()=><p>Pont chargé</p>}/></QueryClientProvider>);
+  expect(html).toContain('Bilan Actif'); expect(html).not.toContain('Pont chargé');
+  expect(client.getQueryCache().find({queryKey:['cash-flow','eurodrill']})?.isActive()).toBe(false);
+  client.clear();
+});

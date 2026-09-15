@@ -58,6 +58,10 @@ Règles validées le 8 septembre 2026, complémentaires à [AGENTS.md](../AGENTS
 
 ## 11. Gimi : comptabilité analytique
 
+- SO consommables (remplacement validé le 9 septembre 2026) : SO confirmés depuis 2023 liés aux factures clients validées, comptes de la rubrique Chiffre d’affaires et affectations analytiques actuelles. Conserver les SO rattachés sans ambiguïté à Incendie installation ou Incendie maintenance ; isoler les rattachements mixtes/ambigus. Ne plus utiliser `gimi_type` ni la répartition ligne par ligne des achats du 600100 de l’analyse abandonnée.
+- Montant par SO = valeur des quantités commandées HT après remise des lignes de type `consu` (Biens, suivis en stock ou non), hors services, combos, notes/sections et acomptes. Compter chaque SO une seule fois dans l’année de commande (date Odoo UTC convertie en Europe/Brussels), même avec plusieurs factures. Il s’agit de valeur commandée et non de CA déjà facturé : les quantités facturées et les avoirs ne remplacent pas les quantités du SO.
+- L’onglet conserve le titre « Achats — SO liés » : quatre colonnes 2023–2026 et quatre lignes (montant installation, part installation, montant maintenance, part maintenance). Pourcentage de chaque département sur leur somme annuelle, tiret si total nul. 2026 borné au mois clôturé, sans extrapolation. Bouton Recalculer explicite, détails par SO et facture/compte conservés dans PostgreSQL, archives récupérables et absence de repli JSON. Aucun changement d’affectation, de clé ou des rapports existants. Ancienne analyse retirée et archivée, ancienne clé Gimi Type supprimée du programme.
+
 - Comptes de résultat normal, LTM et extrapolé : sélection multiple des quatre départements, calcul de toutes les rubriques avec les clés enregistrées, ventilation mensuelle avant agrégation ou extrapolation. « Société entière » conserve le rapport global et les non-affectés ; le détail des règles et limites est documenté dans `docs/gimi-analytic-profit-loss.md`.
 
 - Employer « clé de répartition » plutôt que « code analytique » dans l’interface de configuration concernée.
@@ -66,6 +70,7 @@ Règles validées le 8 septembre 2026, complémentaires à [AGENTS.md](../AGENTS
 - Les affectations et nouvelles clés sont de la configuration persistée ; ne pas rejouer une première affectation automatique au démarrage.
 - Conserver les choix manuels existants. Une suggestion par intitulé ne remplace pas silencieusement une affectation validée.
 - « Répartition des comptes » regroupe les comptes dans les rubriques et l’ordre du compte de résultat ; privilégier le préfixe le plus spécifique pour éviter les doubles affectations, notamment 603 par rapport à 60.
+- « Répartition des comptes » affiche aussi 2025 réalisé et 2026 extrapolé, montants du compte entier avant ventilation, y compris pour les non-affectés et non-classés. Reprendre les écritures validées Odoo et l’extrapolation existante au mois clôturé, avec le signe du compte de résultat. Les montants sont consultatifs, jamais enregistrés dans les affectations ; un échec de lecture affiche « — », pas zéro.
 - Employés : coût annuel salaire provenant de AR ; coût annuel voiture = AQ − AR. Conserver la source importée et les colonnes nécessaires à l’audit.
 - Règles initiales demandées : techniciens et manager SAV en maintenance ; électriciens et technico-commerciaux en installation. Les autres fonctions ambiguës nécessitent une affectation explicite.
 - Coût salaire actuel et coûts véhicules : totaux par département, pourcentages du total, détail des personnes et non-réparti.

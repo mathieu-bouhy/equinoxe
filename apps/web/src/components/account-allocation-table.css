@@ -15,3 +15,9 @@
 }
 .account-allocation-table th[scope="row"] { text-align: left; }
 .account-allocation-table select { min-width: 220px; }
+.analytic-table.account-allocation-table .account-amount { width: 150px; min-width: 150px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.account-allocation-table td.account-amount { font-weight: 600; }
+.account-allocation-table th[scope="row"] { min-width: 170px; }
+.account-amounts-note { padding: 14px 18px; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--border); }
+.account-amounts-note p { margin: 4px 0; }
+.account-amounts-note [role="alert"] { color: var(--error); }

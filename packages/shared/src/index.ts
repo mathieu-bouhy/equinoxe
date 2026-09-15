@@ -1,7 +1,7 @@
 export type Role = 'admin' | 'viewer';
 export type Status = 'active' | 'inactive';
 /** Registre des dossiers analysés : l'administration s'adapte automatiquement à cette liste. */
-export const analysedFiles = [{ slug: 'medipost', name: 'Medipost' }] as const;
+export const analysedFiles = [{ slug: 'medipost', name: 'Medipost' }, { slug: 'smp', name: 'S.M.P.' }] as const;
 export type AnalysedFileSlug = (typeof analysedFiles)[number]['slug'];
 export interface Company { id:string; slug:string; name:string; status:Status; connectorType:'odoo'|'rest'|'none'; createdAt:string; updatedAt:string }
 export interface User { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; passwordHash:string; passwordSalt:string; createdAt:string; updatedAt:string; lastLoginAt:string|null }
@@ -88,4 +88,13 @@ export const toPublicUser = ({passwordHash:_hash,passwordSalt:_salt,...user}:Use
 export type ApiResponse<T>={data:T}|{error:{code:string;message:string}};
 export * from './employee-cost-allocation';
 export interface AccountMonthlyAmounts { accountId:string; values:Record<string,number> }
-export type { CashMovement, CashAccount, CashHistorySnapshot, CashDay, CashMonth, CashEvolutionReport } from './cash-history';
+export type { CashMovement, CashAccount, CashHistorySnapshot, CashDay, CashMonthAccount, CashMonth, CashEvolutionReport } from './cash-history';
+export type AccountAllocationAmounts = {
+  lastClosedMonth: string;
+  through: string;
+  generatedAt: string;
+  accounts: Array<{ accountId: string; amount2025: number | null; amount2026: number | null }>;
+};
+
+export * from './so-consumables';
+export * from './sourced-dossier';

@@ -10,7 +10,7 @@ export async function cashHistoryResponse(options: {
 }): Promise<Response> {
   const { request, company, isAdmin, setting, repository, connector, exportCsv } = options;
   const fail = (message: string, status: number) => Response.json({ error: { code: 'CASH_HISTORY', message } }, { status });
-  if (company.slug !== 'gimi' || company.connectorType !== 'odoo') return fail('Ce suivi est réservé à Gimi.', 409);
+  if (!['gimi', 'eurodrill'].includes(company.slug) || company.connectorType !== 'odoo') return fail('Ce suivi n’est pas disponible pour cette société.', 409);
   if (request.method !== 'GET' && (request.method !== 'POST' || exportCsv)) return fail('Méthode non autorisée.', 405);
   if (request.method === 'POST' && !isAdmin) return fail('Seul un administrateur peut importer l’historique.', 403);
   if (!setting) return fail('Configurez le dernier mois clôturé.', 422);
@@ -30,7 +30,7 @@ export async function cashHistoryResponse(options: {
     const report = buildCashEvolution(snapshot, through);
     if (exportCsv) return new Response(cashMonthlyCsv(report), { headers: {
       'content-type': 'text/csv; charset=utf-8',
-      'content-disposition': `attachment; filename="gimi-tresorerie-2024-01-${report.through.slice(0,7)}.csv"`,
+      'content-disposition': `attachment; filename="${company.slug}-tresorerie-2024-01-${report.through.slice(0,7)}.csv"`,
       'cache-control': 'no-store',
     } });
     return Response.json({ data: report }, { headers: { 'cache-control': 'no-store' } });

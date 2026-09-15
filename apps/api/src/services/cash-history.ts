@@ -15,29 +15,48 @@ export function buildCashEvolution(snapshot: CashHistorySnapshot, requestedThrou
   if (requestedThrough < snapshot.from || !/^\d{4}-\d{2}-\d{2}$/.test(requestedThrough)) throw new Error('Période de trésorerie invalide.');
   const through = requestedThrough < snapshot.through ? requestedThrough : snapshot.through;
   const daily = new Map<string, number>(), ids = new Set<number>(), accounts = new Set(snapshot.accounts.map(a => a.id));
+  const accountDaily = new Map<string, Map<number, { debit: number; credit: number }>>();
   for (const row of snapshot.movements) {
     if (ids.has(row.id)) throw new Error('Mouvement de trésorerie dupliqué.');
     ids.add(row.id);
     if (!accounts.has(row.accountId) || row.date < snapshot.from || row.date > snapshot.through) throw new Error('Mouvement hors périmètre.');
     if (row.date > through) continue;
     daily.set(row.date, (daily.get(row.date) ?? 0) + cents(row.debit) - cents(row.credit));
+    const byAccount = accountDaily.get(row.date) ?? new Map<number, { debit: number; credit: number }>();
+    const totals = byAccount.get(row.accountId) ?? { debit: 0, credit: 0 };
+    totals.debit += cents(row.debit); totals.credit += cents(row.credit);
+    byAccount.set(row.accountId, totals); accountDaily.set(row.date, byAccount);
   }
   const opening = snapshot.accounts.reduce((sum, row) => sum + cents(row.opening), 0);
   let balance = opening;
   const days: CashDay[] = [], months: CashMonth[] = [];
   const date = new Date(`${snapshot.from}T00:00:00Z`);
   let sum = 0;
+  const accountStates = snapshot.accounts.map(account => ({ account, balance: cents(account.opening), sum: 0, debit: 0, credit: 0 }));
   while (date.toISOString().slice(0, 10) <= through) {
     const key = date.toISOString().slice(0, 10), month = key.slice(0, 7), movement = daily.get(key) ?? 0;
     let row = months.at(-1);
     if (!row || row.month !== month) {
       row = { month, days: 0, opening: balance / 100, closing: 0, movement: 0, average: 0,
-        minimum: Infinity, maximum: -Infinity, minimumDate: key, maximumDate: key, difference: 0 };
+        minimum: Infinity, maximum: -Infinity, minimumDate: key, maximumDate: key, difference: 0,
+        accounts: accountStates.map(state => {
+          state.sum = 0; state.debit = 0; state.credit = 0;
+          return { ...state.account, opening: state.balance / 100, closing: state.balance / 100, debit: 0, credit: 0, movement: 0, average: 0 };
+        }) };
       months.push(row); sum = 0;
     }
     balance += movement; sum += balance; row.days++;
     row.closing = balance / 100; row.movement = (balance - cents(row.opening)) / 100;
     row.average = sum / row.days / 100;
+    accountStates.forEach((state, index) => {
+      const net = accountDaily.get(key)?.get(state.account.id);
+      state.balance += (net?.debit ?? 0) - (net?.credit ?? 0);
+      state.debit += net?.debit ?? 0; state.credit += net?.credit ?? 0; state.sum += state.balance;
+      const account = row!.accounts[index];
+      account.debit = state.debit / 100; account.credit = state.credit / 100;
+      account.movement = (state.debit - state.credit) / 100;
+      account.closing = state.balance / 100; account.average = state.sum / row!.days / 100;
+    });
     if (row.closing < row.minimum) { row.minimum = row.closing; row.minimumDate = key; }
     if (row.closing > row.maximum) { row.maximum = row.closing; row.maximumDate = key; }
     days.push({ date: key, movement: movement / 100, closing: row.closing });

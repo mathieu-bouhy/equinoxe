@@ -11,10 +11,12 @@ export type CashHistorySnapshot = {
   monthlyControls: Array<{ month: string; closing: number; difference: number }>;
 };
 export type CashDay = { date: string; movement: number; closing: number };
+export type CashMonthAccount = CashAccount & { debit: number; credit: number; movement: number; average: number };
 export type CashMonth = {
   month: string; days: number; opening: number; closing: number; movement: number;
   average: number; minimum: number; maximum: number;
   minimumDate: string; maximumDate: string; difference: number;
+  accounts: CashMonthAccount[];
 };
 export type CashEvolutionReport = {
   companyId: string; from: string; through: string; requestedThrough: string;
