@@ -1,0 +1,19 @@
+.ratio-legend {
+  margin: 6px 30px 10px;
+  color: #74665b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ratio-legend > span { margin-right: 5px; font-weight: 600; }
+:is(.report-matrix, .dossier-table) tr.percentage-row > td,
+.consumables-summary tr.consumables-share > :is(th, td) {
+  padding-top: 2px !important;
+  padding-bottom: 6px !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  color: #74665b;
+  font-style: normal;
+  border-top: 0;
+}
+.ratio-value { font-size: 11px; font-weight: 400; color: #74665b; }
+@media (max-width: 700px) { .ratio-legend { margin-left: 20px; margin-right: 20px; } }

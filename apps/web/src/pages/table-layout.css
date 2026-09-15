@@ -7,6 +7,18 @@
 }
 
 /* In the BFR, amount is primary, change is secondary and the ratio is quiet. */
+.ltm-report .report-matrix thead th.ltm-period {
+  min-width: 190px;
+}
+
+/* The second header row starts with a numeric total, not the sticky label. */
+.report-matrix thead tr:nth-child(2) th:first-child {
+  position: static;
+  min-width: 116px;
+  width: 116px;
+  text-align: right;
+}
+
 .bfr-card .report-matrix tbody td:nth-child(3n + 2),
 .bfr-card .report-matrix tfoot td:nth-child(3n + 2) {
   color: var(--text);
@@ -47,6 +59,22 @@
 }
 
 @media (max-width: 700px) {
+  .profit-loss .report-matrix th[rowspan],
+  .profit-loss .report-matrix tbody td:first-child {
+    width: 180px;
+    min-width: 180px;
+    max-width: 180px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .profit-loss .drilldown-button {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 0;
+  }
+  .profit-loss .drilldown-button > span { flex: 1; min-width: 0; }
+  .profit-loss .drilldown-button small { flex-basis: 100%; }
   .report-matrix th:not(:first-child),
   .report-matrix td:not(:first-child) {
     width: 98px;

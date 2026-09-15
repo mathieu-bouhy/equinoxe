@@ -21,5 +21,10 @@ describe('répartition analytique des comptes',()=>{
     expect(synced.status).toBe(200);expect(rows).toHaveLength(2);expect(rows.find((row:{accountCode:string})=>row.accountCode==='700007').profitLossSectionLabel).toBe('Chiffre d’affaires');
     const target=rows.find((row:{accountCode:string})=>row.accountCode==='700007'),saved=await app(new Request(url,{method:'PUT',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({assignments:[{accountId:target.id,analyticAllocationCodeId:key.id}]})}));
     expect(saved.status).toBe(200);expect((await store.accountAnalyticAllocations.read()).find(row=>row.id===target.id)?.analyticAllocationCodeId).toBe(key.id);
+    expect(rows.map((row:{accountCode:string})=>row.accountCode)).toEqual(['700007','600000']);
+    expect((await saved.json()).data.map((row:{accountCode:string})=>row.accountCode)).toEqual(['700007','600000']);
+    const refreshed=(await (await app(new Request(url,{headers:{cookie}}))).json()).data;
+    expect(refreshed[0].analyticAllocationCodeId).toBe(key.id);
+    expect(refreshed.map((row:{accountCode:string})=>row.accountCode)).toEqual(['700007','600000']);
   });
 });

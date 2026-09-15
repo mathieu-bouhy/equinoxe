@@ -1,0 +1,14 @@
+.margin-matrix { width:100%; min-width:720px; table-layout:fixed; border-collapse:collapse; }
+.margin-matrix .margin-label-col { width:43%; }
+.margin-matrix th, .margin-matrix td { padding:14px 18px; border-bottom:1px solid #eadbc6; }
+.margin-matrix th { text-align:left; }
+.margin-matrix td, .margin-matrix thead th:not(:first-child) { text-align:right; font-variant-numeric:tabular-nums; }
+.margin-matrix td small, .margin-matrix thead small { display:block; margin-top:5px; font-size:11px; font-weight:400; color:#6d5a46; }
+.margin-matrix thead th { background:#f2e2c8; color:#3b1f12; }
+.margin-matrix .margin-section th { background:#fff5e2; color:#3b1f12; padding-top:20px; }
+.margin-matrix .margin-result { background:#fcfaf5; }
+.margin-matrix .margin-total { background:#f7ecd8; border-top:2px solid #d5b989; }
+.margin-matrix .margin-account th { padding-left:38px; font-size:12px; font-weight:400; overflow-wrap:anywhere; }
+.margin-matrix .margin-account th span { font-weight:700; margin-right:8px; }
+.margin-matrix .margin-account td { font-size:12px; }
+.margin-empty-label { display:inline-block; padding-left:24px; }

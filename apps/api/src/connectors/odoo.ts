@@ -1,4 +1,8 @@
 import { config, type OdooConnection } from '../config';
+import { loadAccountingCoverage } from './odoo-accounting-coverage';
+import { loadCashAudit } from './odoo-cash-audit';
+import { loadSoConsumables } from './odoo-so-consumables';
+import { buildBalance } from '../services/balance-sheet';
 import type { BalanceAccount, BalanceLine, BalanceReport, BfrReport, BfrSection, CashFlowReport, ProfitLossAccount, ProfitLossLine, ProfitLossLtmReport, ProfitLossMonthlyReport, ProfitLossPeriod, ProfitLossReport, ProfitLossSection, ProfitLossSubsection } from '@equinoxe/shared';
 
 /** A closed allow-list: a future RPC method is denied until explicitly reviewed. */
@@ -39,6 +43,18 @@ function buildConfiguredLines(keys:string[],sections:ProfitLossSection[],account
 }
 
 export class OdooConnector {
+  async getCashAudit(accountIds: number[], moveIds: number[], through: string) {
+    const uid = await this.authenticate();
+    return loadCashAudit((model, method, args, kwargs) => this.call(uid, model, method, args, kwargs), accountIds, moveIds, through);
+  }
+  async getAccountingCoverage(years: number[]) {
+    const uid = await this.authenticate();
+    return loadAccountingCoverage((model, method, args, kwargs) => this.call(uid, model, method, args, kwargs), years);
+  }
+  async getSoConsumables(companyId:string,through:string,accounts:import('@equinoxe/shared').SoConsumableAccount[]){
+    const uid=await this.authenticate();
+    return loadSoConsumables((model,method,args,kwargs)=>this.call(uid,model,method,args,kwargs),companyId,through,accounts);
+  }
   constructor(private settings: OdooConnection = config.odoo.gimi, private fetcher: typeof fetch = fetch) {}
   configured() { return Boolean(this.settings.baseUrl && this.settings.database && this.settings.username && this.settings.apiKey); }
   getProviderInfo() { return { provider: 'odoo' as const, baseUrl: this.settings.baseUrl ?? null, database: this.settings.database ?? null }; }
@@ -99,6 +115,24 @@ export class OdooConnector {
     const accounts=await this.call(uid,'account.account','search_read',[['|',['code','=like','6%'],['code','=like','7%']]],{fields:['code','name','account_type'],order:'code asc',context:{active_test:false}}) as Account[];
     return accounts.filter(account=>isProfitLossAccountCode(account.code)&&/^[67]/.test(account.code)).map(account=>({id:String(account.id),code:account.code as string,label:typeof account.name==='string'&&account.name.trim()?account.name:'Compte sans libellé'})).sort((a,b)=>a.code.localeCompare(b.code,'fr-BE',{numeric:true}));
   }
+  /** Paginated, posted ledger used by analytical P&L drilldowns. */
+  async getAnalyticAccountEntries(accountId:string,start:string,end:string):Promise<import('@equinoxe/shared').AccountingEntry[]>{
+    if(!/^\d+$/.test(accountId)||!/^20\d{2}-\d{2}-\d{2}$/.test(start)||!/^20\d{2}-\d{2}-\d{2}$/.test(end)||start>end)throw new ConnectorError('Période ou compte invalide.','forbidden');
+    const uid=await this.authenticate(),result:import('@equinoxe/shared').AccountingEntry[]=[];
+    let after=0;
+    type Row={id:number;date:string;name:string|false;partner_id:[number,string]|false;move_id:[number,string]|false;debit:number;credit:number};
+    while(true){
+      const rows=await this.call(uid,'account.move.line','search_read',[[['account_id','=',Number(accountId)],['parent_state','=','posted'],['date','>=',start],['date','<=',end],['id','>',after]]],{fields:['date','name','partner_id','move_id','debit','credit'],order:'id asc',limit:500}) as Row[];
+      if(!rows.length)break;
+      for(const row of rows){
+        if(row.id<=after||!Number.isFinite(row.debit)||!Number.isFinite(row.credit))throw new ConnectorError('Détail des écritures incohérent.');
+        const base=new URL(this.endpoint());base.username='';base.password='';base.pathname='/web';base.search='';base.hash=`id=${row.move_id?row.move_id[0]:row.id}&model=${row.move_id?'account.move':'account.move.line'}&view_type=form`;
+        result.push({id:String(row.id),date:row.date,label:row.name||'Sans libellé',partner:row.partner_id?row.partner_id[1]:null,debit:row.debit,credit:row.credit,odooUrl:base.toString()});
+      }
+      after=rows.at(-1)!.id;
+    }
+    return result.sort((a,b)=>a.date.localeCompare(b.date)||Number(a.id)-Number(b.id));
+  }
   async getAccountEntries(accountId: string, year: number, includeDraftInvoices = false) {
     const uid = await this.authenticate();
     const stateDomain = includeDraftInvoices ? ['parent_state', 'in', ['posted', 'draft']] : ['parent_state', '=', 'posted'];
@@ -137,15 +171,75 @@ export class OdooConnector {
     groups.forEach((periodGroups,index)=>periodGroups.forEach(group=>{const account=group.account_id?byId.get(group.account_id[0]):undefined;if(!account||!isProfitLossAccountCode(account.code)||typeof group.balance!=='number'||!group.account_id)return;const id=String(group.account_id[0]),previous=details.get(id)??{id,code:account.code,label:String(account.name??group.account_id[1]??'Compte sans libellé'),values:{}};const key=periods[index].key;previous.values[key]=(previous.values[key]??0)-group.balance;details.set(id,previous)}));
     return {periods,lines:buildConfiguredLines(periods.map(period=>period.key),sections,[...details.values()]),generatedAt:new Date().toISOString(),source:'odoo'};
   }
-  async getProfitLossMonths(year: number, sections: ProfitLossSection[] = [], includeDraftInvoices = false): Promise<ProfitLossMonthlyReport> {
+  async getProfitLossMonths(year: number, sections: ProfitLossSection[] = [], includeDraftInvoices = false, asOf?: string): Promise<ProfitLossMonthlyReport> {
+    const end = asOf && year === Number(asOf.slice(0,4)) ? asOf : `${year}-12-31`;
     const uid = await this.authenticate(), stateDomain = includeDraftInvoices ? ['parent_state', 'in', ['posted', 'draft']] : ['parent_state', '=', 'posted'];
-    const groups = await this.call(uid, 'account.move.line', 'read_group', [[stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', `${year}-12-31`]], ['balance'], ['account_id', 'date:month']], { lazy: false }) as MonthlyGroup[];
+    const groups = await this.call(uid, 'account.move.line', 'read_group', [[stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', end]], ['balance'], ['account_id', 'date:month']], { lazy: false }) as MonthlyGroup[];
     const ids = [...new Set(groups.flatMap(group => group.account_id ? [group.account_id[0]] : []))], accounts = ids.length ? await this.call(uid, 'account.account', 'read', [ids], { fields: ['code', 'name', 'account_type'] }) as Account[] : [], byId = new Map(accounts.map(account => [account.id, account]));
-    const months = Array.from({length:12},(_,index)=>`${year}-${String(index+1).padStart(2,'0')}`), values = new Map<string, Record<string, number>>();
+    const months = Array.from({length:Number(end.slice(5,7))},(_,index)=>`${year}-${String(index+1).padStart(2,'0')}`), values = new Map<string, Record<string, number>>();
     for (const group of groups) { const account = group.account_id ? byId.get(group.account_id[0]) : undefined, dateStart = group.__range?.['date:month']?.from, month = typeof dateStart === 'string' ? dateStart.slice(0,7) : undefined; if (!account || !month || !isProfitLossAccountCode(account.code) || typeof group.balance !== 'number') continue; const section=accountOwner({id:String(group.account_id![0]),code:account.code,label:String(account.name??''),values:{}},sections); if (!section) continue; const row = values.get(section.id) ?? {}; row[month] = (row[month] ?? 0) - group.balance; values.set(section.id,row); }
     const lines=new Map(sections.filter(section=>section.kind==='accounts').map(section=>[section.id,{key:section.id,label:section.label,values:values.get(section.id)??{}}]));
     const make=(section:ProfitLossSection):{key:string;label:string;values:Record<string,number>}=>{const existing=lines.get(section.id);if(existing)return existing;const line={key:section.id,label:section.label,values:Object.fromEntries(months.map(month=>[month,section.formula.reduce((sum,term)=>{const source=sections.find(item=>item.id===term.sectionId);const value=source?(make(source).values[month]??0):0;return sum+(term.operator==='subtract'?-value:value)},0)]))};lines.set(section.id,line);return line};
     return { year, months, lines:[...sections].sort((a,b)=>a.order-b.order).map(make).filter(line=>Object.values(line.values).some(value=>Math.abs(value)>.004)),generatedAt:new Date().toISOString(),source:'odoo' };
+  }
+  /** Complete, keyset-paginated cash ledger. Only the existing read-only gateway is used. */
+  async getCashHistory(companyId: string, through: string): Promise<import('@equinoxe/shared').CashHistorySnapshot> {
+    if (!/^20\d{2}-\d{2}-\d{2}$/.test(through) || through < '2024-01-01') throw new ConnectorError('Période de trésorerie invalide.', 'forbidden');
+    const startedAt = new Date().toISOString(), uid = await this.authenticate(), from = '2024-01-01';
+    const accounts: Account[] = [];
+    let after = 0;
+    while (true) {
+      const page = await this.call(uid, 'account.account', 'search_read', [[['code', '=like', '5%'], ['id', '>', after]]],
+        { fields: ['code', 'name'], context: { active_test: false }, order: 'id asc', limit: 500 }) as Account[];
+      if (!page.length) break;
+      if (page.some(row => row.id <= after)) throw new ConnectorError('Pagination des comptes incohérente.');
+      accounts.push(...page); after = page.at(-1)!.id;
+    }
+    const valid = accounts.filter(a => typeof a.code === 'string' && /^5\d{1,11}$/.test(a.code));
+    if (!valid.length) throw new ConnectorError('Aucun compte de trésorerie et placements disponible.');
+    const domain = [['parent_state', '=', 'posted'], ['account_id', 'in', valid.map(a => a.id)]];
+    const grouped = (end: string) => this.call(uid, 'account.move.line', 'read_group', [[...domain, ['date', '<=', end]], ['balance'], ['account_id']], { lazy: false }) as Promise<Group[]>;
+    const opening = await grouped('2023-12-31');
+    type Row = { id: number; date: string; account_id: [number,string]; move_id: [number,string]; name: string | false; debit: number; credit: number };
+    const movements: import('@equinoxe/shared').CashMovement[] = [];
+    after = 0;
+    while (true) {
+      const page = await this.call(uid, 'account.move.line', 'search_read', [[...domain, ['date', '>=', from], ['date', '<=', through], ['id', '>', after]]],
+        { fields: ['date', 'account_id', 'move_id', 'name', 'debit', 'credit'], order: 'id asc', limit: 1000 }) as Row[];
+      if (!page.length) break;
+      if (page.some(row => row.id <= after)) throw new ConnectorError('Pagination des mouvements incohérente.');
+      for (const row of page) {
+        if (!row.account_id || !row.move_id || !Number.isFinite(row.debit) || !Number.isFinite(row.credit)) throw new ConnectorError('Écriture de trésorerie incomplète.');
+        movements.push({ id: row.id, date: row.date, accountId: row.account_id[0], moveId: row.move_id[0], label: row.name || '', debit: row.debit, credit: row.credit });
+      }
+      after = page.at(-1)!.id;
+    }
+    const [closing, monthly] = await Promise.all([
+      grouped(through),
+      this.call(uid, 'account.move.line', 'read_group', [[...domain, ['date', '>=', from], ['date', '<=', through]], ['balance'], ['date:month']], { lazy: false }) as Promise<MonthlyGroup[]>,
+    ]);
+    const amount = (rows: Group[], id: number) => rows.find(g => g.account_id?.[0] === id)?.balance ?? 0;
+    const cashAccounts = valid.map(a => ({ id: a.id, code: String(a.code), label: String(a.name || ''), opening: amount(opening, a.id), closing: amount(closing, a.id) }));
+    for (const account of cashAccounts) {
+      const calculated = account.opening + movements.filter(row => row.accountId === account.id).reduce((sum, row) => sum + row.debit - row.credit, 0);
+      if (Math.abs(calculated - account.closing) > .011) throw new ConnectorError('Les mouvements ne se rapprochent pas des soldes Odoo. Relancez l’import ; aucun historique n’a été remplacé.');
+    }
+    const controls = new Map<string, number>();
+    for (const group of monthly) {
+      const month = group.__range?.['date:month']?.from?.slice(0, 7);
+      if (!month || !Number.isFinite(group.balance)) throw new ConnectorError('Contrôle mensuel Odoo incomplet.');
+      controls.set(month, (controls.get(month) ?? 0) + group.balance!);
+    }
+    const monthlyControls: import('@equinoxe/shared').CashHistorySnapshot['monthlyControls'] = [];
+    let balance = cashAccounts.reduce((sum, a) => sum + a.opening, 0);
+    for (const date = new Date('2024-01-01T00:00:00Z'); date.toISOString().slice(0,10) <= through; date.setUTCMonth(date.getUTCMonth() + 1)) {
+      const month = date.toISOString().slice(0, 7), net = controls.get(month) ?? 0;
+      const actual = movements.filter(row => row.date.startsWith(month)).reduce((sum, row) => sum + row.debit - row.credit, 0);
+      if (Math.abs(actual - net) > .011) throw new ConnectorError('Contrôle mensuel des mouvements incohérent. Relancez l’import.');
+      balance += net; monthlyControls.push({ month, closing: balance, difference: actual - net });
+    }
+    return { version: 1, companyId, source: 'odoo', currency: 'EUR', accountPrefix: '5', from, through, startedAt,
+      importedAt: new Date().toISOString(), accounts: cashAccounts.sort((a,b) => a.code.localeCompare(b.code)), movements, monthlyControls };
   }
   async getBalance(years:number[], asOf?:string):Promise<BalanceReport>{
     const uid=await this.authenticate();
@@ -153,12 +247,22 @@ export class OdooConnector {
     const ids=[...new Set(groups.flat().flatMap(group=>group.account_id?[group.account_id[0]]:[]))],accounts=ids.length?await this.call(uid,'account.account','read',[ids],{fields:['code','name','account_type']}) as Account[]:[],byId=new Map(accounts.map(account=>[account.id,account]));
     const rows=new Map<string,BalanceAccount>();
     groups.forEach((yearGroups,index)=>yearGroups.forEach(group=>{const account=group.account_id?byId.get(group.account_id[0]):undefined;if(!account||!isProfitLossAccountCode(account.code)||typeof group.balance!=='number'||!group.account_id||!/^[1-5]/.test(account.code))return;const id=String(account.id),row=rows.get(id)??{id,code:account.code,label:String(account.name??group.account_id[1]??'Compte sans libellé'),values:{}};row.values[String(years[index])]=group.balance;rows.set(id,row)}));
-    const classified=(key:string,label:string,prefixes:string[]):BalanceLine=>{const items=[...rows.values()].filter(row=>prefixes.some(prefix=>row.code.startsWith(prefix))).sort((a,b)=>a.code.localeCompare(b.code));return {key,label,accounts:items,values:Object.fromEntries(years.map(year=>[String(year),items.reduce((sum,row)=>sum+(row.values[String(year)]??0),0)]))};};
-    const assets=[classified('fixed-assets','Immobilisations',['2']),classified('inventory','Stocks et encours',['3']),classified('receivables','Créances clients et autres créances',['40','41','42']),classified('cash','Trésorerie et placements',['50','51','52','53','54','55','56','57','58']),classified('prepayments','Comptes de régularisation actifs',['490','491'])];
-    const liabilities=[classified('equity','Capitaux propres',['1']),classified('financial-debt','Dettes financières',['17','42','43']),classified('suppliers','Dettes fournisseurs',['44']),classified('tax-social','Dettes fiscales, sociales et autres',['45','46','47','48']),classified('accruals','Comptes de régularisation passifs',['492','493'])];
-    // Account balances use debit-positive accounting signs. Present liabilities as positive values in the UI.
-    liabilities.forEach(line=>{line.values=Object.fromEntries(years.map(year=>[String(year),-(line.values[String(year)]??0)]));line.accounts.forEach(account=>account.values=Object.fromEntries(Object.entries(account.values).map(([year,value])=>[year,-value])))});
-    return {years,assets,liabilities,generatedAt:new Date().toISOString(),source:'odoo'};
+    return buildBalance(years,[...rows.values()],asOf);
+  }
+  /** Actual posted amounts by account/month for computed allocation keys. No Odoo writes. */
+  async getProfitLossAccountMonths(accountIds:string[],years:number[],asOf?:string):Promise<import('@equinoxe/shared').AccountMonthlyAmounts[]>{
+    if(!accountIds.length)return [];
+    if(accountIds.some(id=>!/^\d+$/.test(id))||!years.length||years.some(year=>!Number.isInteger(year)||year<2000||year>2100))throw new ConnectorError('Période ou comptes invalides.','forbidden');
+    const uid=await this.authenticate(),end=asOf??`${Math.max(...years)}-12-31`;
+    const groups=await this.call(uid,'account.move.line','read_group',[[['parent_state','=','posted'],['account_id','in',accountIds.map(Number)],['date','>=',`${Math.min(...years)}-01-01`],['date','<=',end]],['balance'],['account_id','date:month']],{lazy:false}) as MonthlyGroup[];
+    const rows=new Map(accountIds.map(accountId=>[accountId,{accountId,values:{} as Record<string,number>}]));
+    for(const group of groups){
+      const row=group.account_id?rows.get(String(group.account_id[0])):undefined,month=group.__range?.['date:month']?.from?.slice(0,7);
+      if(!row)continue;
+      if(!month||!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||typeof group.balance!=='number')throw new ConnectorError('Détail mensuel comptable incomplet.');
+      if(years.includes(Number(month.slice(0,4))))row.values[month]=(row.values[month]??0)-group.balance;
+    }
+    return [...rows.values()];
   }
   async getBfr(years:number[], sections:BfrSection[], asOf?:string):Promise<BfrReport>{
     const uid=await this.authenticate(), ordered=[...sections].sort((a,b)=>a.order-b.order);
