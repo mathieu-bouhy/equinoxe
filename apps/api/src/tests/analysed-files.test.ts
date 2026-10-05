@@ -27,10 +27,10 @@ describe('accès aux dossiers analysés',()=>{
   test('autorise un administrateur et uniquement les lecteurs explicitement attribués',async()=>{
     const {store,app}=await fresh(),admin=await login(app),now=new Date().toISOString(),passwordHash=await Bun.password.hash('reader-password',{algorithm:'argon2id'});
     const makeViewer=(name:string,analysisAccess:string[])=>({id:crypto.randomUUID(),name,email:`${name.toLowerCase()}@test.local`,role:'viewer' as const,status:'active' as const,analysisAccess,passwordHash,passwordSalt:'embedded-argon2id',createdAt:now,updatedAt:now,lastLoginAt:null});
-    const authorised=makeViewer('Authorised',['smiling-baker']),denied=makeViewer('Denied',[]);
+    const authorised=makeViewer('Authorised',['europlantes']),denied=makeViewer('Denied',[]);
     await store.users.write([...(await store.users.read()),authorised,denied]);
     const authorisedSession=await login(app,authorised.email,'reader-password'),deniedSession=await login(app,denied.email,'reader-password');
-    const request=(cookie:string)=>app(new Request('http://api/v1/analysed-files/smiling-baker',{headers:{cookie}}));
+    const request=(cookie:string)=>app(new Request('http://api/v1/analysed-files/europlantes',{headers:{cookie}}));
     expect((await request(admin.cookie)).status).toBe(200);
     expect((await request(authorisedSession.cookie)).status).toBe(200);
     expect((await request(deniedSession.cookie)).status).toBe(403);

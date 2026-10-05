@@ -1,0 +1,12 @@
+.europlantes-file,
+.europlantes-file > *,
+.europlantes-file .smiling-stack,
+.europlantes-analysis,
+.europlantes-analysis-page,
+.europlantes-analysis-page > * {
+  min-width: 0;
+}
+
+.europlantes-file .tabs {
+  max-width: 100%;
+}
