@@ -24,7 +24,13 @@ export function createApp(store=new Store(config.dataDir,config.databaseUrl),aut
  if(path==='/v1/auth/logout'&&method==='POST')return secured(json({ok:true},200,{'set-cookie':cookie('',true,sessionCookieName)}));
  const user=await userFor(request); if(!user)return secured(fail('UNAUTHORIZED','Session invalide ou expirée.',401)); if(path==='/v1/auth/me'&&method==='POST')return secured(json(toPublicUser(user))); if(path==='/v1/auth/me'&&method==='PATCH'){const parsed=await body(request,z.object({name:z.string().min(2).optional(),email:z.string().email().optional(),password:z.string().min(8).optional()}));if(!parsed.success||(!parsed.data.name&&!parsed.data.email&&!parsed.data.password))return secured(fail('VALIDATION','Informations de compte invalides.',422));const nextEmail=parsed.data.email?.toLowerCase(),passwordHash=parsed.data.password?await Bun.password.hash(parsed.data.password,{algorithm:'argon2id'}):undefined,updated=await store.users.mutate(users=>{if(nextEmail&&users.some(item=>item.id!==user.id&&item.email===nextEmail))return {values:users,result:null};const current=users.find(item=>item.id===user.id);if(!current)return {values:users,result:null};const changed={...current,name:parsed.data.name??current.name,email:nextEmail??current.email,passwordHash:passwordHash??current.passwordHash,passwordSalt:'embedded-argon2id',updatedAt:new Date().toISOString()};return {values:users.map(item=>item.id===current.id?changed:item),result:changed};});if(!updated)return secured(fail('CONFLICT','Cette adresse email existe déjà ou le compte n’existe plus.',409));return secured(json(toPublicUser(updated)));}
  if(path==='/v1/analysed-files'&&method==='GET')return secured(json(user.role==='admin'?analysedFiles:analysedFiles.filter(file=>user.analysisAccess.includes(file.slug))));
- if(path==='/v1/analysed-files/medipost'&&method==='GET'){if(user.role!=='admin'&&!user.analysisAccess.includes('medipost'))return secured(fail('FORBIDDEN','Accès au dossier Medipost refusé.',403));return secured(json({slug:'medipost',name:'Medipost'}));}
+ const analysedFileMatch=path.match(/^\/v1\/analysed-files\/([^/]+)$/);
+ if(analysedFileMatch&&method==='GET'){
+   const file=analysedFiles.find(item=>item.slug===analysedFileMatch[1]);
+   if(!file)return secured(fail('NOT_FOUND','Dossier analysé introuvable.',404));
+   if(user.role!=='admin'&&!user.analysisAccess.includes(file.slug))return secured(fail('FORBIDDEN',`Accès au dossier ${file.name} refusé.`,403));
+   return secured(json(file));
+ }
  const admin=()=>user.role==='admin'?null:fail('FORBIDDEN','Cette action nécessite un administrateur.',403);
  if(path==='/v1/analysed-files/medipost/business-plan-assumptions'){
    if(user.role!=='admin'&&!user.analysisAccess.includes('medipost'))return secured(fail('FORBIDDEN','Accès au dossier Medipost refusé.',403));
