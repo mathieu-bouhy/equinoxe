@@ -8,6 +8,7 @@ import { Badge, Button, ErrorState, LoadingState } from '../components/ui';
 const dossierLinks = [
   { slug: 'medipost', name: 'Medipost' },
   { slug: 'smiling-baker', name: 'Smiling Baker' },
+  { slug: 'europlantes', name: 'Europlantes' },
 ];
 
 export function Shell(){
