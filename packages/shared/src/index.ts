@@ -1,7 +1,7 @@
 export type Role = 'admin' | 'viewer';
 export type Status = 'active' | 'inactive';
 /** Registre des dossiers analysés : l'administration s'adapte automatiquement à cette liste. */
-export const analysedFiles = [{ slug: 'medipost', name: 'Medipost' }, { slug: 'smp', name: 'S.M.P.' }] as const;
+export const analysedFiles = [{ slug: 'medipost', name: 'Medipost' }, { slug: 'smiling-baker', name: 'Smiling Baker' }, { slug: 'smp', name: 'S.M.P.' }] as const;
 export type AnalysedFileSlug = (typeof analysedFiles)[number]['slug'];
 export interface Company { id:string; slug:string; name:string; status:Status; connectorType:'odoo'|'rest'|'none'; createdAt:string; updatedAt:string }
 export interface User { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; passwordHash:string; passwordSalt:string; createdAt:string; updatedAt:string; lastLoginAt:string|null }
