@@ -38,10 +38,10 @@ export function GimiBudgetHeaders() {
   return <Fragment><th rowSpan={2} className="budget-header">Budget 2026</th><th rowSpan={2} className="variance-header">Écart vs budget</th></Fragment>;
 }
 
-export function GimiBudgetAmountCells({ label, actual }: { label: string; actual: number }) {
-  const budget = gimiBudget2026[label], variance = budgetVariance(actual, budget);
+export function GimiBudgetAmountCells({ label, actual, factor = 1 }: { label: string; actual: number; factor?: number }) {
+  const annualBudget = gimiBudget2026[label], budget = annualBudget === undefined ? undefined : annualBudget * factor, variance = budgetVariance(actual, budget);
   return <Fragment>
-    <td className="budget-cell" title={budget === undefined ? 'Budget non disponible pour ce niveau de détail.' : budgetTitle(label)}>{budget === undefined ? '—' : amount(budget)}</td>
+    <td className="budget-cell" title={budget === undefined ? 'Budget non disponible pour ce niveau de détail.' : factor === 1 ? budgetTitle(label) : `${budgetTitle(label)} · proratisé sur ${Math.round(factor * 12)} mois.`}>{budget === undefined ? '—' : amount(budget)}</td>
     <td className={`variance-cell${tone(variance)}`} title="(Montant affiché − budget) ÷ valeur absolue du budget. Un résultat positif est favorable.">{variance === null ? '—' : signedRatio(variance)}</td>
   </Fragment>;
 }

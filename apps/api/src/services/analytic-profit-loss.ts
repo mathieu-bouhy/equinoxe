@@ -7,7 +7,7 @@ export function analyticPeriods(mode:AnalyticReportMode,closed:string):AnalyticP
   if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(closed)||closed<'2024-01')throw new AnalyticReportError('Mois clôturé invalide (à partir de 2024).');
   const [year,month]=closed.split('-').map(Number);
   return [2,1,0].map(offset=>{
-    const end=new Date(Date.UTC(year-offset,mode==='ltm'||offset===0?month:12,0));
+    const end=new Date(Date.UTC(year-offset,mode==='ltm'||mode==='annual'||offset===0?month:12,0));
     const start=new Date(Date.UTC(year-offset,mode==='ltm'?month-12:0,1));
     const months:string[]=[];
     for(let cursor=new Date(start);cursor<=end;cursor.setUTCMonth(cursor.getUTCMonth()+1))months.push(cursor.toISOString().slice(0,7));

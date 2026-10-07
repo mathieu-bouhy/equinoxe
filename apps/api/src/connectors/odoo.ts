@@ -133,17 +133,17 @@ export class OdooConnector {
     }
     return result.sort((a,b)=>a.date.localeCompare(b.date)||Number(a.id)-Number(b.id));
   }
-  async getAccountEntries(accountId: string, year: number, includeDraftInvoices = false) {
+  async getAccountEntries(accountId: string, year: number, includeDraftInvoices = false, endDate = `${year}-12-31`) {
     const uid = await this.authenticate();
     const stateDomain = includeDraftInvoices ? ['parent_state', 'in', ['posted', 'draft']] : ['parent_state', '=', 'posted'];
-    const rows = await this.call(uid, 'account.move.line', 'search_read', [[['account_id', '=', Number(accountId)], stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', `${year}-12-31`]]], { fields: ['date', 'name', 'partner_id', 'debit', 'credit'], order: 'date asc,id asc', limit: 5000 }) as Array<{ id: number; date: string; name: string; partner_id?: [number, string] | false; debit: number; credit: number }>;
+    const rows = await this.call(uid, 'account.move.line', 'search_read', [[['account_id', '=', Number(accountId)], stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', endDate]]], { fields: ['date', 'name', 'partner_id', 'debit', 'credit'], order: 'date asc,id asc', limit: 5000 }) as Array<{ id: number; date: string; name: string; partner_id?: [number, string] | false; debit: number; credit: number }>;
     const base=this.settings.baseUrl?.replace(/\/$/,'')??null;
     return rows.map(row => ({ id: String(row.id), date: row.date, label: row.name, partner: row.partner_id ? row.partner_id[1] : null, debit: row.debit ?? 0, credit: row.credit ?? 0, odooUrl:base?`${base}/web#id=${encodeURIComponent(String(row.id))}&model=account.move.line&view_type=form`:null }));
   }
-  async getProfitLoss(years: number[], sections: ProfitLossSection[] = [], subsections: ProfitLossSubsection[] = [], includeDraftInvoices = false, asOf?:string): Promise<ProfitLossReport> {
+  async getProfitLoss(years: number[], sections: ProfitLossSection[] = [], subsections: ProfitLossSubsection[] = [], includeDraftInvoices = false, asOf?:string, everyYearThroughMonth?:number): Promise<ProfitLossReport> {
     const uid = await this.authenticate();
     const stateDomain = includeDraftInvoices ? ['parent_state', 'in', ['posted', 'draft']] : ['parent_state', '=', 'posted'];
-    const groups = await Promise.all(years.map(year => {const end=asOf&&year===Number(asOf.slice(0,4))?asOf:`${year}-12-31`;return this.call(uid, 'account.move.line', 'read_group', [[stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', end]], ['balance'], ['account_id']], { lazy: false }) as Promise<Group[]>}));
+    const groups = await Promise.all(years.map(year => {const end=everyYearThroughMonth?new Date(Date.UTC(year,everyYearThroughMonth,0)).toISOString().slice(0,10):asOf&&year===Number(asOf.slice(0,4))?asOf:`${year}-12-31`;return this.call(uid, 'account.move.line', 'read_group', [[stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', end]], ['balance'], ['account_id']], { lazy: false }) as Promise<Group[]>}));
     const ids = [...new Set(groups.flat().flatMap(g => g.account_id ? [g.account_id[0]] : []))], accounts = ids.length ? await this.call(uid, 'account.account', 'read', [ids], { fields: ['code', 'name', 'account_type'] }) as Account[] : [], byId = new Map(accounts.map(a => [a.id, a]));
     const totals = new Map(definitions.map(([key]) => [key, {} as Record<string, number>])), details = new Map(definitions.map(([key]) => [key, new Map<string, ProfitLossAccount>()]));
     groups.forEach((yearGroups, index) => yearGroups.forEach(group => { const account = group.account_id ? byId.get(group.account_id[0]) : undefined, key = account && this.category(account); if (!key || !account || !isProfitLossAccountCode(account.code) || typeof group.balance !== 'number' || !group.account_id) return; const year = String(years[index]), amount = -group.balance, accountId = String(group.account_id[0]); totals.get(key)![year] = (totals.get(key)![year] ?? 0) + amount; const rows = details.get(key)!, previous = rows.get(accountId) ?? { id: accountId, code: account.code, label: String(account.name ?? group.account_id[1] ?? 'Compte sans libellé'), values: {} }; previous.values[year] = (previous.values[year] ?? 0) + amount; rows.set(accountId, previous); }));

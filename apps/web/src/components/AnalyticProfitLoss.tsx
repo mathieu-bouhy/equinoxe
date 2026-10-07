@@ -12,7 +12,7 @@ const amount=(n:number)=>new Intl.NumberFormat('fr-BE',{maximumFractionDigits:0}
 const euros=(n:number)=>new Intl.NumberFormat('fr-BE',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
 const percent=(n:number,base:number)=>base?new Intl.NumberFormat('fr-BE',{style:'percent',maximumFractionDigits:1}).format(n/base):'—';
 const monthLabel=(month:string)=>new Intl.DateTimeFormat('fr-BE',{month:'short',year:'2-digit',timeZone:'UTC'}).format(new Date(`${month}-01T00:00:00Z`));
-const titles={annual:'Compte de résultat simplifié',ltm:'Compte de résultat LTM',extrapolated:'Compte de résultat extrapolé'};
+const titles={annual:'Compte de résultat YTD',ltm:'Compte de résultat LTM',extrapolated:'Compte de résultat extrapolé'};
 
 export function AnalyticDepartmentSelector({value,onChange}:{value:AllocationDepartment[]|null;onChange:(value:AllocationDepartment[]|null)=>void}){
   return <Card className="analytic-report-filter"><fieldset><legend>Départements analytiques</legend><div className="analytic-report-options">

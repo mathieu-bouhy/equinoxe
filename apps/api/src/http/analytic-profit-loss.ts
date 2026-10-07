@@ -30,7 +30,7 @@ export async function analyticProfitLossResponse(request:Request,company:Company
       return Response.json({data},{headers:{'cache-control':'no-store'}});
     }
     const years=[...new Set(periods.flatMap(p=>p.months.map(m=>Number(m.slice(0,4)))))],asOf=periods.at(-1)!.end;
-    const source=mode==='ltm'?await connector.getProfitLossLtm(periods,sections):await connector.getProfitLoss(years,sections,subsections,false,asOf);
+    const source=mode==='ltm'?await connector.getProfitLossLtm(periods,sections):await connector.getProfitLoss(years,sections,subsections,false,asOf,mode==='annual'?Number(closed.slice(5,7)):undefined);
     const ids=[...new Set(source.lines.flatMap(line=>line.accounts??[]).map(a=>a.id))];
     const monthly=await connector.getProfitLossAccountMonths(ids,years,asOf);
     return Response.json({data:buildAnalyticProfitLoss({...context,mode,closed,selected,sections,subsections,sourceLines:source.lines,monthly})},{headers:{'cache-control':'no-store'}});
