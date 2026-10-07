@@ -23,18 +23,18 @@ function analyticReport(mode:AnalyticReportMode):AnalyticProfitLossReport {
     mode,departments:['led'],lastClosedMonth:'2026-09',revenueKey:'revenue',unallocated:[],warnings:[],generatedAt:'2026-10-07T10:00:00.000Z',
     periods:[{key,label:mode==='ltm'?'Oct. 2025 – sept. 2026':'2026',start:'2026-01-01',end:'2026-09-30',months:['2026-01'],factor:mode==='extrapolated'?4/3:1}],
     lines:[
-      {key:'revenue',label:'Chiffre d’affaires',kind:'accounts',values:{[key]:1_000_000},monthlyValues:{'2026-01':100_000},accounts:[],subsections:[]},
-      {key:'goods',label:'Marchandises',kind:'accounts',values:{[key]:-250_000},monthlyValues:{'2026-01':-25_000},accounts:[],subsections:[]},
+      {key:'revenue',label:'Chiffre d’affaires',kind:'accounts',values:{[key]:1_000_000},monthlyValues:{'2026-01':100_000},originalValues:{[key]:2_000_000},originalMonthlyValues:{'2026-01':200_000},accounts:[],subsections:[]},
+      {key:'goods',label:'Marchandises',kind:'accounts',values:{[key]:-250_000},monthlyValues:{'2026-01':-25_000},originalValues:{[key]:-1_000_000},originalMonthlyValues:{'2026-01':-100_000},accounts:[],subsections:[]},
     ],
   };
 }
 
-for(const mode of ['annual','ltm','extrapolated'] as const)test(`${mode} affiche le budget société et l’écart dans la sélection analytique`,()=>{
+for(const mode of ['annual','ltm','extrapolated'] as const)test(`${mode} affiche le budget analytique et l’écart dans la sélection`,()=>{
   const departments=['led'] as const,client=new QueryClient(),report=analyticReport(mode);
   client.setQueryData(['analytic-profit-loss','gimi',mode,[...departments],'2026-09'],report);
   const html=renderToStaticMarkup(<QueryClientProvider client={client}><AnalyticReport companyId="gimi" mode={mode} departments={[...departments]} closed="2026-09"/></QueryClientProvider>);
-  expect(html).toContain('Budget 2026 — société');
-  expect(html).toContain('Écart sélection vs budget société');
-  expect(html).toContain('Budget 2026 de la société entière');
-  expect(html.replaceAll('\u202f','')).toContain(mode==='annual'?'6009':'8012');
+  expect(html).toContain('Budget 2026 — sélection');
+  expect(html).toContain('Écart vs budget sélection');
+  expect(html).toContain('comptes 70 ventilés selon l’onglet');
+  expect(html.replaceAll('\u202f','')).toContain(mode==='annual'?'588':'784');
 });

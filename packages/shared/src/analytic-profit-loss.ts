@@ -10,7 +10,7 @@ export interface AnalyticAccount {
 }
 export interface AnalyticLine {
   key:string; label:string; kind:'accounts'|'calculation'; values:Record<string,number>;
-  monthlyValues:Record<string,number>; accounts:AnalyticAccount[];
+  monthlyValues:Record<string,number>; originalValues:Record<string,number>; originalMonthlyValues:Record<string,number>; accounts:AnalyticAccount[];
   subsections:Array<{id:string;label:string;accounts:AnalyticAccount[];values:Record<string,number>;monthlyValues:Record<string,number>}>;
 }
 export interface AnalyticProfitLossReport {

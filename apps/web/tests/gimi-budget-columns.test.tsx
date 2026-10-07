@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
+import type { AnalyticProfitLossReport } from '@equinoxe/shared';
 import { GimiBudgetAmountCells, GimiBudgetHeaders, GimiBudgetNote, budgetVariance, gimiBudget2026, gimiBudgetPeriodFactor } from '../src/components/GimiBudgetColumns';
+import { gimiAnalyticBudget2026, gimiRevenueBudget2026 } from '../src/services/gimi-budget';
 
 test('le budget Gimi 2026 se réconcilie avec les rubriques visibles', () => {
   expect(gimiBudget2026['Marge brute']).toBe(gimiBudget2026['Chiffre d’affaires'] + gimiBudget2026.Marchandises);
@@ -39,12 +41,13 @@ test('le budget annuel est proratisé sur la période YTD', () => {
   expect(html).not.toContain('variance-cell unfavorable');
 });
 
-test('la vue analytique indique clairement que le budget reste celui de la société', () => {
-  const html = renderToStaticMarkup(<table><thead><tr><GimiBudgetHeaders companyScope /></tr></thead></table>);
-  const note = renderToStaticMarkup(<GimiBudgetNote companyScope comparison="Comparaison analytique." />);
-  expect(html).toContain('Budget 2026 — société');
-  expect(html).toContain('Écart sélection vs budget société');
-  expect(note).toContain('Budget 2026 de la société entière');
+test('la vue analytique décrit les sources de sa ventilation budgétaire', () => {
+  const html = renderToStaticMarkup(<table><thead><tr><GimiBudgetHeaders analyticScope /></tr></thead></table>);
+  const note = renderToStaticMarkup(<GimiBudgetNote analyticScope comparison="Comparaison analytique." />);
+  expect(html).toContain('Budget 2026 — sélection');
+  expect(html).toContain('Écart vs budget sélection');
+  expect(note).toContain('comptes 70 ventilés selon l’onglet');
+  expect(note).toContain('comptes 60 et autres rubriques selon les clés analytiques actuelles');
 });
 
 test('le facteur budgétaire analytique suit uniquement la période YTD', () => {
@@ -52,4 +55,26 @@ test('le facteur budgétaire analytique suit uniquement la période YTD', () => 
   expect(gimiBudgetPeriodFactor('ltm', '2026-09')).toBe(1);
   expect(gimiBudgetPeriodFactor('extrapolated', '2026-09')).toBe(1);
   expect(gimiBudgetPeriodFactor('annual')).toBe(1);
+});
+
+test('le budget analytique utilise le deuxième onglet pour les 70 et le split réel 2026 pour le reste', () => {
+  const sourceLabels=['Chiffre d’affaires','Marchandises','Sous-traitance','Services et biens divers','Personnel','Charges d’exploitation','Produits d’exploitation','Amortissements','Financier','Impôts'];
+  const report:AnalyticProfitLossReport={mode:'annual',departments:['led'],lastClosedMonth:'2026-09',periods:[{key:'2026',label:'2026',start:'2026-01-01',end:'2026-09-30',months:['2026-01'],factor:1}],revenueKey:'revenue',unallocated:[],warnings:[],generatedAt:'',lines:sourceLabels.map((label,index)=>({
+    key:index===0?'revenue':`line-${index}`,label,kind:'accounts',values:{'2026':index===0?25:-25},monthlyValues:{'2026-01':index===0?25:-25},originalValues:{'2026':index===0?100:-100},originalMonthlyValues:{'2026-01':index===0?100:-100},accounts:[],subsections:[],
+  }))};
+  const budget=gimiAnalyticBudget2026(report,['led']);
+  expect(gimiRevenueBudget2026.fireInstallation).toBe(4_108_835);
+  expect(budget['Chiffre d’affaires']).toBe(784_006);
+  expect(budget.Marchandises).toBe(-681_000);
+  expect(budget['Marge brute']).toBe(103_006);
+  expect(budget['Coûts hors achats']).toBe(-849_250);
+  expect(budget.EBITDA).toBe(-746_244);
+  expect(budget['Résultat après impôts']).toBe(-892_744);
+});
+
+test('une clé 2026 non calculable ne fabrique pas de budget analytique', () => {
+  const report:AnalyticProfitLossReport={mode:'annual',departments:['led'],lastClosedMonth:'2026-09',periods:[],revenueKey:'revenue',unallocated:[],warnings:[],generatedAt:'',lines:[{
+    key:'goods',label:'Marchandises',kind:'accounts',values:{},monthlyValues:{'2026-01':10},originalValues:{},originalMonthlyValues:{'2026-01':0},accounts:[],subsections:[],
+  }]};
+  expect(gimiAnalyticBudget2026(report,['led']).Marchandises).toBeUndefined();
 });

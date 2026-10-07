@@ -41,7 +41,7 @@ export function accountShareResolver(context:AllocationContext,selected:Allocati
     return {share:selected.reduce((sum,field)=>sum+resolved[field]/100,0),unallocated:0,label:key.label};
   }};
 }
-const sum=(rows:AnalyticAccount[],keys:string[],field:'values'|'monthlyValues')=>Object.fromEntries(keys.map(key=>[key,rows.reduce((s,row)=>s+(row[field][key]??0),0)]));
+const sum=(rows:AnalyticAccount[],keys:string[],field:'values'|'monthlyValues'|'originalValues'|'originalMonths')=>Object.fromEntries(keys.map(key=>[key,rows.reduce((s,row)=>s+(row[field][key]??0),0)]));
 
 export function buildAnalyticProfitLoss(input:AllocationContext&{
   mode:AnalyticReportMode;closed:string;selected:AllocationDepartment[];
@@ -70,15 +70,16 @@ export function buildAnalyticProfitLoss(input:AllocationContext&{
     const existing=lines.get(section.id);if(existing)return existing;
     building.add(section.id);
     const source=accounts.filter(a=>owners.get(a.id)===section.id);
-    const line:AnalyticLine={key:section.id,label:section.label,kind:section.kind,values:{},monthlyValues:{},accounts:source,subsections:[]};
+    const line:AnalyticLine={key:section.id,label:section.label,kind:section.kind,values:{},monthlyValues:{},originalValues:{},originalMonthlyValues:{},accounts:source,subsections:[]};
     if(section.kind==='accounts'){
       line.values=sum(source,periodKeys,'values');line.monthlyValues=sum(source,months,'monthlyValues');
+      line.originalValues=sum(source,periodKeys,'originalValues');line.originalMonthlyValues=sum(source,months,'originalMonths');
       const subs=input.subsections.filter(s=>s.parentSectionId===section.id).sort((a,b)=>a.order-b.order);
       const subOwner=(a:AnalyticAccount)=>subs.flatMap(s=>s.prefixes.filter(p=>a.code.startsWith(p)).map(p=>({s,length:p.length}))).sort((a,b)=>b.length-a.length||a.s.order-b.s.order)[0]?.s.id;
       line.subsections=subs.map(sub=>{const rows=source.filter(a=>subOwner(a)===sub.id);return {id:sub.id,label:sub.label,accounts:rows,values:sum(rows,periodKeys,'values'),monthlyValues:sum(rows,months,'monthlyValues')};}).filter(sub=>sub.accounts.length);
     }else{
       const terms=section.formula.map(term=>{const ref=input.sections.find(s=>s.id===term.sectionId);if(!ref)throw new AnalyticReportError('Une formule référence une rubrique absente.');return {line:make(ref),sign:term.operator==='subtract'?-1:1};});
-      for(const [field,keys] of [['values',periodKeys],['monthlyValues',months]] as const)line[field]=Object.fromEntries(keys.map(k=>[k,terms.reduce((s,t)=>s+t.sign*(t.line[field][k]??0),0)]));
+      for(const [field,keys] of [['values',periodKeys],['monthlyValues',months],['originalValues',periodKeys],['originalMonthlyValues',months]] as const)line[field]=Object.fromEntries(keys.map(k=>[k,terms.reduce((s,t)=>s+t.sign*(t.line[field][k]??0),0)]));
     }
     building.delete(section.id);lines.set(section.id,line);return line;
   };

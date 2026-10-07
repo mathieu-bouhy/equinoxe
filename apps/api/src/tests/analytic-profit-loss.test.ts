@@ -54,7 +54,9 @@ for(const mode of ['annual','ltm','extrapolated'] as const)test(`${mode}: quatre
     expect(sum).toBeCloseTo(input.sourceLines[0].accounts.reduce((s,a)=>s+a.values[p.key],0)*p.factor,8);
     for(const line of combined.lines)expect(parts.reduce((s,r)=>s+r.lines.find(l=>l.key===line.key)!.values[p.key],0)).toBeCloseTo(line.values[p.key],8);
     expect(combined.lines.find(l=>l.key==='net')!.values[p.key]).toBeCloseTo(combined.lines.filter(l=>l.kind==='accounts').reduce((s,l)=>s+l.values[p.key],0),8);
+    for(const line of combined.lines)expect(line.originalValues[p.key]).toBeCloseTo(parts[0].lines.find(l=>l.key===line.key)!.originalValues[p.key],8);
   }
+  expect(combined.lines.find(l=>l.key==='goods')!.originalMonthlyValues['2026-02']).toBe(-600);
   expect(combined.lines.find(l=>l.key==='goods')!.accounts.map(a=>a.code)).toEqual(['600001']);expect(combined.lines.find(l=>l.key==='sub')!.accounts.map(a=>a.code)).toEqual(['603001']);
   expect(JSON.stringify(input)).toBe(before);expect(combined.unallocated.map(a=>a.code)).toEqual(['670000']);
 });
