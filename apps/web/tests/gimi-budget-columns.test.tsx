@@ -30,3 +30,11 @@ test('les en-têtes et le sens favorable sont explicites', () => {
   expect(html).toContain('variance-cell favorable');
   expect(html).toContain('+27');
 });
+
+test('le budget annuel est proratisé sur la période YTD', () => {
+  const html = renderToStaticMarkup(<table><tbody><tr><GimiBudgetAmountCells label="Chiffre d’affaires" actual={6_009_000} factor={9/12} /></tr></tbody></table>);
+  expect(html).toContain('proratisé sur 9 mois');
+  expect(html.replaceAll('\u202f', '')).toContain('6009');
+  expect(html).not.toContain('variance-cell favorable');
+  expect(html).not.toContain('variance-cell unfavorable');
+});

@@ -43,7 +43,7 @@ function fixture(mode:AnalyticReportMode='annual',selected:AllocationDepartment[
 }
 test('périodes annuelles, LTM de 12 mois et extrapolation unique',()=>{
   const ltm=analyticPeriods('ltm','2026-07');expect(ltm.map(p=>[p.start,p.end,p.months.length])).toEqual([['2023-08-01','2024-07-31',12],['2024-08-01','2025-07-31',12],['2025-08-01','2026-07-31',12]]);
-  expect(analyticPeriods('annual','2026-02').map(p=>p.months.length)).toEqual([12,12,2]);
+  expect(analyticPeriods('annual','2026-02').map(p=>p.months.length)).toEqual([2,2,2]);
   expect(analyticPeriods('extrapolated','2026-02').map(p=>p.factor)).toEqual([1,1,6]);
   expect(()=>analyticPeriods('ltm','2026-13')).toThrow();
 });
