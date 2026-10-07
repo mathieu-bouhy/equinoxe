@@ -1,0 +1,51 @@
+.report-matrix thead .budget-header,
+.report-matrix thead .variance-header {
+  min-width: 128px;
+  white-space: normal;
+}
+
+.report-matrix thead .budget-header {
+  border-left: 3px solid #efab21;
+  background: #70400f;
+}
+
+.report-matrix thead .variance-header {
+  background: #56301c;
+}
+
+.report-matrix td.budget-cell {
+  border-left: 3px solid #efab21;
+  background: #fff8e9;
+  color: #3b1f12;
+  font-weight: 700;
+}
+
+.report-matrix td.variance-cell {
+  background: #fffdf8;
+  color: #6d5a46;
+  font-weight: 800;
+}
+
+.report-matrix td.variance-cell.favorable {
+  color: #1f6b45;
+}
+
+.report-matrix td.variance-cell.unfavorable {
+  color: #a43a32;
+}
+
+.report-matrix .percentage-row td.budget-cell,
+.report-matrix .percentage-row td.variance-cell {
+  background: #fffaf1;
+}
+
+.budget-note {
+  padding-bottom: 8px;
+}
+
+@media (max-width: 700px) {
+  .report-matrix thead .budget-header,
+  .report-matrix thead .variance-header {
+    min-width: 108px;
+  }
+}
