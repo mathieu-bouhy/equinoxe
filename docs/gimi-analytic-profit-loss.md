@@ -15,6 +15,13 @@ Les rapports Compte de résultat, LTM et extrapolé proposent quatre cases : Inc
 - Les coûts ou dates manquants sont signalés. Les bases salariales connues ne constituent pas un historique réel de paie.
 - Un contrôle compare la somme des mois de chaque compte au total Odoo de chaque période (tolérance d’un centime). Une incohérence produit une erreur explicite, pas un total fabriqué.
 
+## Budget 2026 analytique
+
+- Pour le chiffre d’affaires (comptes 70), le budget des départements provient de l’onglet « analyse 60 et 70 » du fichier Budget 2026 : Incendie installation additionne dépannage, fourniture et installation ; Incendie maintenance reprend contrat ; Intrusion et LED sont repris directement. Les autres catégories commerciales du fichier ne sont pas affectées aux quatre départements.
+- Pour les comptes 60 et toutes les autres rubriques sources, le budget société est multiplié par la part analytique obtenue avec les clés actuelles sur le réalisé 2026, du 1er janvier au dernier mois clôturé. Les clés Salaire et Voiture conservent donc leur calcul mensuel.
+- Si le réalisé société 2026 d’une rubrique est nul, ou si le ratio produit une part hors de 0 à 100 %, le budget analytique affiche « — » au lieu d’inventer une ventilation.
+- Marge brute, coûts hors achats, EBITDA et résultats sont recalculés à partir des budgets analytiques des rubriques sources. Le compte de résultat YTD prorate ensuite ces budgets selon le nombre de mois clôturés ; LTM et extrapolé utilisent le budget annuel.
+
 ## Détail et sécurité
 
 Les rubriques et sous-rubriques s’ouvrent jusqu’aux comptes. Les comptes sans activité retenue sur tous les mois sont masqués ; une activité mensuelle qui s’annule sur l’année reste consultable. Un clic sur le montant d’un compte ouvre un tableau sous le rapport : débit/crédit originaux, pourcentage retenu, montant analytique, lien vers l’écriture Odoo. Les lectures sont paginées. Un montant extrapolé est distingué du total réellement comptabilisé.

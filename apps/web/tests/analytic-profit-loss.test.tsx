@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AnalyticDepartmentSelector, GimiProfitLoss } from '../src/components/AnalyticProfitLoss';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { AnalyticProfitLossReport, AnalyticReportMode } from '@equinoxe/shared';
+import { AnalyticDepartmentSelector, AnalyticReport, GimiProfitLoss } from '../src/components/AnalyticProfitLoss';
 
 test('quatre cases dans l’ordre demandé et retour explicite à la société entière',()=>{
   const html=renderToStaticMarkup(<AnalyticDepartmentSelector value={['fireMaintenance','led']} onChange={()=>{}}/>);
@@ -13,4 +15,26 @@ test('quatre cases dans l’ordre demandé et retour explicite à la société e
 for(const mode of ['annual','ltm','extrapolated'] as const)test(`${mode} conserve par défaut le composant global existant`,()=>{
   const html=renderToStaticMarkup(<GimiProfitLoss companyId="gimi" mode={mode} closed="2026-07"><div>Rapport global original</div></GimiProfitLoss>);
   expect(html).toContain('Rapport global original');expect(html).toContain('aria-pressed="true"');expect(html).not.toContain('checked=""');
+});
+
+function analyticReport(mode:AnalyticReportMode):AnalyticProfitLossReport {
+  const key=mode==='ltm'?'ltm-2026-09':'2026';
+  return {
+    mode,departments:['led'],lastClosedMonth:'2026-09',revenueKey:'revenue',unallocated:[],warnings:[],generatedAt:'2026-10-07T10:00:00.000Z',
+    periods:[{key,label:mode==='ltm'?'Oct. 2025 – sept. 2026':'2026',start:'2026-01-01',end:'2026-09-30',months:['2026-01'],factor:mode==='extrapolated'?4/3:1}],
+    lines:[
+      {key:'revenue',label:'Chiffre d’affaires',kind:'accounts',values:{[key]:1_000_000},monthlyValues:{'2026-01':100_000},originalValues:{[key]:2_000_000},originalMonthlyValues:{'2026-01':200_000},accounts:[],subsections:[]},
+      {key:'goods',label:'Marchandises',kind:'accounts',values:{[key]:-250_000},monthlyValues:{'2026-01':-25_000},originalValues:{[key]:-1_000_000},originalMonthlyValues:{'2026-01':-100_000},accounts:[],subsections:[]},
+    ],
+  };
+}
+
+for(const mode of ['annual','ltm','extrapolated'] as const)test(`${mode} affiche le budget analytique et l’écart dans la sélection`,()=>{
+  const departments=['led'] as const,client=new QueryClient(),report=analyticReport(mode);
+  client.setQueryData(['analytic-profit-loss','gimi',mode,[...departments],'2026-09'],report);
+  const html=renderToStaticMarkup(<QueryClientProvider client={client}><AnalyticReport companyId="gimi" mode={mode} departments={[...departments]} closed="2026-09"/></QueryClientProvider>);
+  expect(html).toContain('Budget 2026 — sélection');
+  expect(html).toContain('Écart vs budget sélection');
+  expect(html).toContain('comptes 70 ventilés selon l’onglet');
+  expect(html.replaceAll('\u202f','')).toContain(mode==='annual'?'588':'784');
 });

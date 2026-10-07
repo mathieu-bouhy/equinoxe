@@ -43,7 +43,40 @@
   padding-bottom: 8px;
 }
 
+/* Keep the analytical comparison visible even when the annual columns overflow. */
+.analytic-pnl .report-matrix {
+  --analytic-budget-column-width: 128px;
+}
+
+.analytic-pnl .report-matrix thead .budget-header,
+.analytic-pnl .report-matrix thead .variance-header,
+.analytic-pnl .report-matrix td.budget-cell,
+.analytic-pnl .report-matrix td.variance-cell {
+  position: sticky;
+  z-index: 2;
+}
+
+.analytic-pnl .report-matrix thead .budget-header,
+.analytic-pnl .report-matrix thead .variance-header {
+  z-index: 4;
+}
+
+.analytic-pnl .report-matrix thead .variance-header,
+.analytic-pnl .report-matrix td.variance-cell {
+  right: 0;
+}
+
+.analytic-pnl .report-matrix thead .budget-header,
+.analytic-pnl .report-matrix td.budget-cell {
+  right: var(--analytic-budget-column-width);
+  box-shadow: -8px 0 12px rgba(59, 31, 18, 0.08);
+}
+
 @media (max-width: 700px) {
+  .analytic-pnl .report-matrix {
+    --analytic-budget-column-width: 108px;
+  }
+
   .report-matrix thead .budget-header,
   .report-matrix thead .variance-header {
     min-width: 108px;
