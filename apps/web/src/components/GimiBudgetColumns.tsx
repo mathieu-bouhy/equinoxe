@@ -34,8 +34,17 @@ const budgetTitle = (label: string) => label === 'Amortissements'
   ? 'Budget Excel : amortissements (-200 k€) et réduction de valeur sur créances (+10 k€), regroupés pour réconcilier les totaux.'
   : 'Budget Gimi 2026 · 12 mois';
 
-export function GimiBudgetHeaders() {
-  return <Fragment><th rowSpan={2} className="budget-header">Budget 2026</th><th rowSpan={2} className="variance-header">Écart vs budget</th></Fragment>;
+export function gimiBudgetPeriodFactor(mode: 'annual' | 'ltm' | 'extrapolated', lastClosedMonth?: string) {
+  if (mode !== 'annual') return 1;
+  const month = Number(lastClosedMonth?.slice(5, 7));
+  return Number.isFinite(month) && month > 0 ? Math.min(12, month) / 12 : 1;
+}
+
+export function GimiBudgetHeaders({ companyScope = false }: { companyScope?: boolean }) {
+  return <Fragment>
+    <th rowSpan={2} className="budget-header">{companyScope ? 'Budget 2026 — société' : 'Budget 2026'}</th>
+    <th rowSpan={2} className="variance-header">{companyScope ? 'Écart sélection vs budget société' : 'Écart vs budget'}</th>
+  </Fragment>;
 }
 
 export function GimiBudgetAmountCells({ label, actual, factor = 1 }: { label: string; actual: number; factor?: number }) {
@@ -57,6 +66,6 @@ export function EmptyGimiBudgetCells() {
   return <Fragment><td className="budget-cell">—</td><td className="variance-cell">—</td></Fragment>;
 }
 
-export function GimiBudgetNote({ comparison }: { comparison: string }) {
-  return <p className="report-note budget-note">Budget 2026 issu du fichier Gimi « Budget 2026 - 12 mois ». {comparison} L’écart est calculé par rapport à la valeur absolue du budget : positif = favorable, négatif = défavorable.</p>;
+export function GimiBudgetNote({ comparison, companyScope = false }: { comparison: string; companyScope?: boolean }) {
+  return <p className="report-note budget-note">Budget 2026 {companyScope ? 'de la société entière, ' : ''}issu du fichier Gimi « Budget 2026 - 12 mois ». {comparison} L’écart est calculé par rapport à la valeur absolue du budget : positif = favorable, négatif = défavorable.</p>;
 }

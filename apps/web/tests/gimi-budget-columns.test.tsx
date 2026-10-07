@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { GimiBudgetAmountCells, GimiBudgetHeaders, budgetVariance, gimiBudget2026 } from '../src/components/GimiBudgetColumns';
+import { GimiBudgetAmountCells, GimiBudgetHeaders, GimiBudgetNote, budgetVariance, gimiBudget2026, gimiBudgetPeriodFactor } from '../src/components/GimiBudgetColumns';
 
 test('le budget Gimi 2026 se réconcilie avec les rubriques visibles', () => {
   expect(gimiBudget2026['Marge brute']).toBe(gimiBudget2026['Chiffre d’affaires'] + gimiBudget2026.Marchandises);
@@ -37,4 +37,19 @@ test('le budget annuel est proratisé sur la période YTD', () => {
   expect(html.replaceAll('\u202f', '')).toContain('6009');
   expect(html).not.toContain('variance-cell favorable');
   expect(html).not.toContain('variance-cell unfavorable');
+});
+
+test('la vue analytique indique clairement que le budget reste celui de la société', () => {
+  const html = renderToStaticMarkup(<table><thead><tr><GimiBudgetHeaders companyScope /></tr></thead></table>);
+  const note = renderToStaticMarkup(<GimiBudgetNote companyScope comparison="Comparaison analytique." />);
+  expect(html).toContain('Budget 2026 — société');
+  expect(html).toContain('Écart sélection vs budget société');
+  expect(note).toContain('Budget 2026 de la société entière');
+});
+
+test('le facteur budgétaire analytique suit uniquement la période YTD', () => {
+  expect(gimiBudgetPeriodFactor('annual', '2026-09')).toBe(9 / 12);
+  expect(gimiBudgetPeriodFactor('ltm', '2026-09')).toBe(1);
+  expect(gimiBudgetPeriodFactor('extrapolated', '2026-09')).toBe(1);
+  expect(gimiBudgetPeriodFactor('annual')).toBe(1);
 });
