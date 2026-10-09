@@ -27,19 +27,19 @@
 
 .bfr-card .report-matrix tbody td:nth-child(3n),
 .bfr-card .report-matrix tfoot td:nth-child(3n) {
-  color: #5d4937;
+  color: #163c34;
 }
 
 .bfr-card .report-matrix tbody td:nth-child(3n + 1),
 .bfr-card .report-matrix tfoot td:nth-child(3n + 1) {
-  background: #fffdf8;
+  background: #fff;
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
 }
 
 .report-matrix .non-cash-row td {
-  background: #f4f1ed !important;
+  background: #fff!important;
   color: #8a8178;
   font-style: italic;
 }
@@ -53,7 +53,7 @@
 }
 
 .reconciliation-matrix .reconciliation-gap td {
-  background: #f4f1ed;
+  background: #fff;
   color: #766d64;
   font-style: italic;
 }

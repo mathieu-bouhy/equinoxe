@@ -33,3 +33,12 @@ Les endpoints GET `/v1/companies/:id/profit-loss/analytic` et `/analytic/entries
 `bun run test`, `bun run typecheck`, `bun run build`.
 
 Tests isolés : conservation des sommes dans les trois modes, formules, affectation exclusive, coûts mensuels, périodes, erreurs, autorisations et révocation, pagination Odoo exclusivement en lecture, sélecteur et conservation du rapport global. Vérifications navigateur complémentaires : sélection multiple, changement d’onglet/mois, drilldowns, liens, absence de débordement sur mobile, colonnes égales et erreur Odoo intégrée.
+
+
+## Chargement et cache — 9 octobre 2026
+
+Le rapport Société entière est chargé en premier et reste monté, masqué pendant la sélection analytique. Aucun appel analytique n’est lancé tant qu’aucun département n’est choisi. Le retour au global retrouve son contenu et ses lignes ouvertes. Les rapports récents restent frais 60 secondes dans la session navigateur, sans rechargement automatique au retour du focus ; le cache est vidé à la déconnexion. Une modification locale des rubriques, clés ou du mois clôturé invalide les vues concernées.
+
+Le connecteur conserve au maximum 24 résultats pendant 60 secondes et regroupe les lectures identiques simultanées. Le cache est propre à chaque société/connexion ; la clé inclut les périodes, les rubriques et leurs formules, les sous-rubriques et la sélection des écritures validées/brouillons. Les montants mensuels sont réutilisés entre départements, mais les clés analytiques sont relues et appliquées au moment du calcul. Les erreurs ne sont pas conservées ; les résultats sont clonés pour éviter qu’une extrapolation altère la source. Les droits restent vérifiés par l’API avant chaque réponse. Aucun changement des formules financières.
+
+Le premier chargement dépend d’Odoo. Mesure locale le 9 octobre 2026, Gimi YTD au mois configuré : environ 1,8 s à froid, moins de 1 ms pour la même lecture du connecteur en cache, contenu strictement identique. Cette mesure exclut le réseau navigateur, l’authentification Equinoxe et le rendu ; elle ne garantit pas un chargement initial instantané.

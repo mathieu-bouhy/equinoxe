@@ -5,7 +5,7 @@ Règles validées le 8 septembre 2026, complémentaires à [AGENTS.md](../AGENTS
 ## 8. Reporting et sources historiques
 
 - Noms de référence : Gimi, Lonneux, Medipost. Les variantes issues de la dictée ne justifient pas de créer une nouvelle société.
-- Séparer « Sociétés existantes » et « Dossiers analysés ». Conserver une navigation et des configurations propres à chacun.
+- Séparer « Reporting financier » et « Dossiers analysés ». Conserver une navigation et des configurations propres à chacun.
 - Les dashboards proviennent du registre par société. Ne pas réintroduire les anciens placeholders Synthèse/Finance/Opérations à la place des rapports développés.
 - Gimi : données comptables Odoo, écritures validées. Lonneux : historique 2024–2025 issu de l’import Excel et 2026 issu d’Odoo, avec inclusion des factures non validées demandée pour Lonneux seulement.
 - Import Lonneux : prendre les lignes portant un vrai numéro de compte ; ne pas additionner à nouveau titres et sous-totaux du fichier.
@@ -95,9 +95,9 @@ Règles validées le 8 septembre 2026, complémentaires à [AGENTS.md](../AGENTS
 
 ## 13. Présentation et expérience utilisateur
 
-- Interface française, professionnelle, chaleureuse, cohérente avec Equinoxe : fond crème `#f7f1e8`, blanc, brun `#3b1f12`, accent doré `#f4b533`, bordures `#eadbc6`.
+- Interface française, professionnelle, cohérente avec le kit graphique Equinoxe validé du 18 septembre 2026. Demande finale du 9 octobre 2026 : base blanche avec des couleurs plus présentes dans les menus, onglets, en-têtes et totaux des tableaux. Identité Equinoxe vert profond `#163c34` et corail `#ed8b6b`, déclinaisons Gimi jaune, Lonneux vert/bois, Eurodrill bleu/vert inspirées de leurs sites. Détails dans [visual-identity.md](visual-identity.md). Préserver les couleurs sémantiques des écarts financiers. Reprendre le logo validé sans le redessiner.
 - Police principale Manrope avec fallback ; composants partagés, focus visible, erreurs intégrées, chargement et sauvegarde explicites. Aucun `alert()` natif.
-- Préserver les pages existantes plutôt que changer leur esthétique à chaque ajout.
+- Préserver les pages existantes plutôt que changer leur esthétique à chaque ajout. Refonte validée le 9 octobre 2026 : navigation en quatre rubriques déroulantes (Reporting financier, Applications Equinoxe avec Facturation, Dossiers analysés, Configuration), sous-menus placés directement sous leur rubrique, navigation mobile ouvrable et menus internes harmonisés.
 - Rapports financiers : milliers d’euros sans symbole euro dans chaque cellule, sans décimales ; préciser l’unité. Les écritures comptables peuvent conserver leur précision en euros et centimes pour l’audit.
 - Pourcentages visibles sans bouton d’activation, plus discrets que les montants. Indiquer le dénominateur : CA total ou CA du département, notamment pour le taux de marge.
 - Colonnes annuelles de largeur égale, chiffres et années alignés à droite, en-têtes lisibles. Alignement cohérent entre tableaux comparables.

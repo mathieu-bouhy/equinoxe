@@ -1,0 +1,122 @@
+/* White surfaces, company identities and a consistent hierarchy for financial data.
+   Website references and accessible adaptations: docs/visual-identity.md. */
+:root,[data-brand] {
+  --brand-accent:#ed8b6b;
+  --brand-solid:#163c34;
+  --brand-on-solid:#fff;
+  --brand-deep:#163c34;
+  --brand-soft:#f4f8f6;
+  --brand-tint:#e5f0e9;
+  --brand-emphasis:#cde2d6;
+  --brand-border:#bfd5c8;
+  --brand-secondary:#ed8b6b;
+  --accent:var(--brand-accent);
+  --accent-strong:var(--brand-deep);
+}
+[data-brand="gimi"] {
+  --brand-accent:#ffc543;--brand-solid:#ffc543;--brand-on-solid:#2d0d07;
+  --brand-deep:#684514;--brand-soft:#fffcf4;--brand-tint:#fff3d3;
+  --brand-emphasis:#ffe5a1;--brand-border:#ecd396;--brand-secondary:#a97519;
+}
+[data-brand="lonneux"] {
+  --brand-accent:#96bf11;--brand-solid:#536c0b;--brand-on-solid:#fff;
+  --brand-deep:#3f520e;--brand-soft:#fafcf3;--brand-tint:#f0f5dc;
+  --brand-emphasis:#e1edb8;--brand-border:#cdda9d;--brand-secondary:#d5a88c;
+}
+[data-brand="eurodrill"] {
+  --brand-accent:#008fbe;--brand-solid:#086b8f;--brand-on-solid:#fff;
+  --brand-deep:#14526a;--brand-soft:#f4fafc;--brand-tint:#e2f2f8;
+  --brand-emphasis:#c7e8f4;--brand-border:#b8dce9;--brand-secondary:#82b54c;
+}
+/* Editorial accents for analysed dossiers, not claimed as official brand colors. */
+[data-brand="medipost"] {
+  --brand-accent:#38a9a1;--brand-solid:#176e6c;--brand-on-solid:#fff;
+  --brand-deep:#155b59;--brand-soft:#f4fbfa;--brand-tint:#e2f3f0;
+  --brand-emphasis:#c5e8e2;--brand-border:#b6dcd6;--brand-secondary:#ed8b6b;
+}
+[data-brand="smiling-baker"] {
+  --brand-accent:#de9d58;--brand-solid:#8b5224;--brand-on-solid:#fff;
+  --brand-deep:#71451f;--brand-soft:#fdf9f4;--brand-tint:#faeedf;
+  --brand-emphasis:#f3d9b9;--brand-border:#e7cdad;--brand-secondary:#b86e40;
+}
+[data-brand="europlantes"] {
+  --brand-accent:#739d65;--brand-solid:#42673b;--brand-on-solid:#fff;
+  --brand-deep:#355431;--brand-soft:#f6faf4;--brand-tint:#eaf3e5;
+  --brand-emphasis:#d6e7cc;--brand-border:#c5d9b9;--brand-secondary:#c59c52;
+}
+[data-brand="smp"] {
+  --brand-accent:#9a8ac5;--brand-solid:#685486;--brand-on-solid:#fff;
+  --brand-deep:#514366;--brand-soft:#f9f7fc;--brand-tint:#eee8f6;
+  --brand-emphasis:#dfd3ee;--brand-border:#d3c5e5;--brand-secondary:#ba8d96;
+}
+/* Contrast is required even for the yellow Gimi palette. */
+.shell :is(button,a,input,select,summary):focus-visible {outline-color:var(--brand-deep)}
+/* Navigation: the monogram and the active link always identify the same company. */
+.sidebar .nav-group.current>.nav-group-toggle {background:#eaf2ed;border-color:#d3e1d8;box-shadow:inset 3px 0 #ed8b6b}
+.sidebar .nav-group-toggle>svg:first-child {color:#326858}
+.sidebar .nav-group-toggle>small {background:#e5eee8;border-color:transparent;color:#315848}
+.sidebar .nav-child[data-brand] .nav-monogram {background:var(--brand-emphasis);border-color:var(--brand-border);color:var(--brand-deep);border-radius:7px}
+.sidebar .nav-child:hover {background:var(--brand-soft);border-color:var(--brand-border)}
+.sidebar .nav-child.active {background:var(--brand-tint);color:var(--brand-deep);border-color:var(--brand-border);box-shadow:inset 3px 0 var(--brand-accent)}
+.sidebar .nav-child.active .nav-monogram {background:var(--brand-solid);color:var(--brand-on-solid);border-color:transparent}
+.nav-company-settings>summary:before {content:'';width:7px;height:7px;background:var(--brand-accent);border-radius:50%;margin-right:8px;flex-shrink:0}
+.nav-company-settings>summary>svg {margin-left:auto}
+.sidebar .user-avatar {background:#e5eee8;border-color:#cbd9d0}
+.workspace-context {padding:5px 10px;border:1px solid var(--brand-border);border-radius:6px;background:var(--brand-tint);color:var(--brand-deep);font-size:11px;font-weight:750}
+.workspace-header>span:first-of-type:before {width:7px;height:7px;background:var(--brand-accent)}
+.main .page-header {padding:20px 24px;background:var(--brand-soft);border:1px solid var(--brand-border);border-left:5px solid var(--brand-accent);border-radius:12px}
+.main .page-header h1 {color:var(--brand-deep)}
+.main .page-header .eyebrow {color:var(--brand-deep)}
+.main :is(.tabs,.analytic-tabs,.time-tabs) {background:var(--brand-soft);border-color:var(--brand-border)}
+.main :is(.tabs,.analytic-tabs,.time-tabs)>:is(a,button) {background:transparent}
+.main :is(.tabs,.analytic-tabs,.time-tabs)>:is(a,button):hover {background:var(--brand-tint);border-color:var(--brand-border);color:var(--brand-deep)}
+.main :is(.tabs,.analytic-tabs,.time-tabs)>.active,
+.main :is(.tabs,.analytic-tabs,.time-tabs)>.active:hover {background:var(--brand-solid);color:var(--brand-on-solid);border-color:var(--brand-solid);box-shadow:0 2px 4px #172c1512}
+.main :is(.dossier-subtabs,.sb-subtabs,.analysis-subtabs,.market-unit-tabs) {background:var(--brand-soft);border-color:var(--brand-border)}
+.main :is(.dossier-subtabs,.sb-subtabs,.analysis-subtabs,.market-unit-tabs,.competitor-picker) button.active {background:var(--brand-tint);border-color:var(--brand-border);color:var(--brand-deep);box-shadow:inset 0 -2px var(--brand-accent)}
+/* Dense tables: soft headers, tinted calculated rows, stronger key totals.
+   Keep backgrounds opaque for sticky columns; color must never change amounts. */
+.main table thead th {background:var(--brand-tint);color:var(--brand-deep);border-bottom:1px solid var(--brand-border)}
+.main .report-matrix thead th:first-child {background:var(--brand-tint)}
+.main table tbody tr:hover> :is(td,th) {background:var(--brand-soft)}
+.main :is(.report-matrix,.company-balance-matrix) :is(.account-row,.balance-detail-row)> :is(td,th) {background:#f8faf9}
+.main :is(.report-matrix,.business-plan-table) :is(.calculation-row,.total)>td,
+.main table :is(.balance-section,.cash-flow-total,.cash-reconciliation-total,.margin-total,.valuation-total)> :is(td,th) {background:var(--brand-tint);border-top:1px solid var(--brand-border);border-bottom:1px solid var(--brand-border);font-weight:750}
+.main .report-matrix .key-calculation>td {background:var(--brand-emphasis);color:var(--brand-deep);border-top:2px solid var(--brand-accent);border-bottom:1px solid var(--brand-border)}
+.main .report-matrix .key-calculation>td:first-child {box-shadow:inset 4px 0 var(--brand-accent)}
+.main .report-matrix .percentage-row>td {background:var(--brand-soft);color:var(--muted)}
+.main .report-matrix .subsection-row>td {background:var(--brand-soft)}
+.main .report-matrix :is(.month-head,.month-cell) {background:var(--brand-soft)!important}
+.main .report-matrix .calculation-row .month-cell {background:var(--brand-tint)!important}
+.main .report-matrix .key-calculation .month-cell {background:var(--brand-emphasis)!important}
+.main table tfoot :is(th,td) {background:var(--brand-emphasis);color:var(--brand-deep);border-top:2px solid var(--brand-accent);font-weight:800}
+.main .company-balance-section>h3 {padding-left:11px;border-left:3px solid var(--brand-secondary);color:var(--brand-deep)}
+.main .company-balance-matrix .balance-summary-row:nth-child(even)> :is(td,th) {background:var(--brand-soft)}
+.main .profit-loss-heading {border-top:3px solid var(--brand-accent)}
+.main .profit-loss-heading .eyebrow {color:var(--brand-deep)}
+.main .unit-note {background:var(--brand-soft);border-color:var(--brand-border);color:var(--brand-deep)}
+/* Budgets stay distinct from actuals; red/green retain their financial meaning. */
+.main .report-matrix :is(.budget-header,td.budget-cell) {background:#edf3fa;border-left-color:#769bc3}
+.main .report-matrix .budget-header {color:#355779}
+.main .report-matrix :is(.variance-header,td.variance-cell) {background:#f3f6fa}
+.main .report-matrix td.variance-cell.favorable {background:#eef7f0;color:#1f6b45}
+.main .report-matrix td.variance-cell.unfavorable {background:#fff1ee;color:#a43a32}
+.main .cash-selected>td {background:var(--brand-tint)}
+.main .cash-selected>td:first-child {background:var(--brand-tint);box-shadow:inset 3px 0 var(--brand-accent)}
+/* Summary cards get a strong number and a discreet colored edge. */
+.main :is(.smiling-kpis,.analysis-kpis,.sb-kpis,.market-kpis,.building-kpis,.valuation-kpis,.loi-kpis,.hours-kpis)>*,
+.main .cash-evolution-summary>div {background:var(--brand-soft);border-color:var(--brand-border);border-top:3px solid var(--brand-accent)}
+.main :is(.smiling-kpis,.analysis-kpis,.sb-kpis,.market-kpis,.building-kpis,.valuation-kpis,.loi-kpis,.hours-kpis) strong,
+.main .cash-evolution-summary strong {color:var(--brand-deep)}
+.main .users-summary strong {color:#21634e}
+.main .directory-user.selected,.main .role-choices label.selected,.main .access-choice.checked,.main .full-access-note {background:#edf5f0}
+.main .badge.success {background:#eef7f0}.main .badge.warning {background:#fff6e7}.main .badge.error {background:#fff1ee}
+@media(max-width:800px) {
+  .main .page-header {padding:16px 18px}
+  .workspace-header {gap:9px;flex-wrap:wrap;padding:12px 0}
+  .workspace-context {font-size:10px;padding:4px 7px}
+}
+@media print {
+  .main .page-header {background:#fff}
+  .main table :is(th,td) {print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
