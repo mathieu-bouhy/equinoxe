@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Sigma } from 'lucide-react';
 import { allocationFields } from '@equinoxe/shared';
 import type { AllocationDepartment, AnalyticAccount, AnalyticPeriod, AnalyticReportMode } from '@equinoxe/shared';
+import { reportQueryOptions } from '../services/report-queries';
 import { api } from '../services/api';
 import { gimiAnalyticBudget2026 } from '../services/gimi-budget';
 import { EmptyGimiBudgetCells, GimiBudgetAmountCells, GimiBudgetHeaders, GimiBudgetNote, GimiBudgetRatioCells, gimiBudgetPeriodFactor } from './GimiBudgetColumns';
@@ -25,11 +26,11 @@ export function AnalyticDepartmentSelector({value,onChange}:{value:AllocationDep
 export function GimiProfitLoss({companyId,mode,closed,children}:{companyId:string;mode:AnalyticReportMode;closed?:string;children:ReactNode}){
   const [selected,setSelected]=useState<AllocationDepartment[]|null>(null);
   const departments=allocationFields.map(f=>f.key).filter(key=>selected?.includes(key));
-  return <><AnalyticDepartmentSelector value={selected} onChange={setSelected}/>{selected===null?children:!departments.length?<EmptyState title="Aucun département sélectionné">Cochez un département ou revenez à Société entière.</EmptyState>:<AnalyticReport key={`${mode}:${departments.join(',')}:${closed}`} companyId={companyId} mode={mode} departments={departments} closed={closed}/>}</>;
+  return <><AnalyticDepartmentSelector value={selected} onChange={setSelected}/><div hidden={selected!==null}>{children}</div>{selected===null?null:!departments.length?<EmptyState title="Aucun département sélectionné">Cochez un département ou revenez à Société entière.</EmptyState>:<AnalyticReport key={`${mode}:${departments.join(',')}:${closed}`} companyId={companyId} mode={mode} departments={departments} closed={closed}/>}</>;
 }
 type Detail={account:AnalyticAccount;period:AnalyticPeriod;month?:string};
 export function AnalyticReport({companyId,mode,departments,closed}:{companyId:string;mode:AnalyticReportMode;departments:AllocationDepartment[];closed?:string}){
-  const q=useQuery({queryKey:['analytic-profit-loss',companyId,mode,departments,closed],queryFn:()=>api.analyticProfitLoss(companyId,mode,departments),retry:1});
+  const q=useQuery({...reportQueryOptions,queryKey:['analytic-profit-loss',companyId,mode,departments,closed],queryFn:()=>api.analyticProfitLoss(companyId,mode,departments),retry:1});
   const [open,setOpen]=useState(new Set<string>()),[expanded,setExpanded]=useState(new Set<string>()),[detail,setDetail]=useState<Detail|null>(null);
   if(q.isLoading)return <LoadingState/>;
   if(q.error||!q.data)return <ErrorState message={q.error instanceof Error?q.error.message:'Impossible de calculer le compte de résultat analytique.'}/>;

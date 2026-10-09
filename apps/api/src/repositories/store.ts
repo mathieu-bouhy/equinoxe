@@ -5,7 +5,7 @@ import type { Collection } from './collection';
 import { PostgresDatabase, PostgresFile } from './postgres-file';
 
 const status=z.enum(['active','inactive']);
-const user=z.object({id:z.string(),name:z.string(),email:z.string().email(),role:z.enum(['admin','viewer']),status,analysisAccess:z.array(z.string()).default([]),passwordHash:z.string(),passwordSalt:z.string(),createdAt:z.string(),updatedAt:z.string(),lastLoginAt:z.string().nullable()});
+const user=z.object({id:z.string(),name:z.string(),email:z.string().email(),role:z.enum(['admin','user','viewer']),status,companyIds:z.array(z.string()).optional(),equinoxAccess:z.boolean().default(false),analysisAccess:z.array(z.string()).default([]),passwordHash:z.string(),passwordSalt:z.string(),createdAt:z.string(),updatedAt:z.string(),lastLoginAt:z.string().nullable()});
 const company=z.object({id:z.string(),slug:z.string(),name:z.string(),status,connectorType:z.enum(['odoo','rest','none']),createdAt:z.string(),updatedAt:z.string()});
 const access=z.object({userId:z.string(),companyId:z.string(),createdAt:z.string()});
 const dashboard=z.object({id:z.string(),companyId:z.string(),slug:z.string(),label:z.string(),order:z.number(),status});

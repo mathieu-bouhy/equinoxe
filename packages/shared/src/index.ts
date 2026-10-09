@@ -1,10 +1,11 @@
-export type Role = 'admin' | 'viewer';
+// `viewer` reste accepté pour relire les comptes historiques. Les nouveaux comptes utilisent `user`.
+export type Role = 'admin' | 'user' | 'viewer';
 export type Status = 'active' | 'inactive';
 /** Registre des dossiers analysés : l'administration s'adapte automatiquement à cette liste. */
 export const analysedFiles = [{ slug: 'medipost', name: 'Medipost' }, { slug: 'smiling-baker', name: 'Smiling Baker' }, { slug: 'europlantes', name: 'Europlantes' }, { slug: 'smp', name: 'S.M.P.' }] as const;
 export type AnalysedFileSlug = (typeof analysedFiles)[number]['slug'];
 export interface Company { id:string; slug:string; name:string; status:Status; connectorType:'odoo'|'rest'|'none'; createdAt:string; updatedAt:string }
-export interface User { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; passwordHash:string; passwordSalt:string; createdAt:string; updatedAt:string; lastLoginAt:string|null }
+export interface User { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; companyIds?:string[]; equinoxAccess?:boolean; passwordHash:string; passwordSalt:string; createdAt:string; updatedAt:string; lastLoginAt:string|null }
 export interface CompanyAccess { userId:string; companyId:string; createdAt:string }
 export interface DashboardDefinition { id:string; companyId:string; slug:string; label:string; order:number; status:Status }
 export type HoursClient = 'Gimi'|'Eurodrill'|null;
@@ -83,8 +84,14 @@ export const medipostBusinessPlanDefaults=():Omit<MedipostBusinessPlanAssumption
   companyValue:4000000,cashExtraction:800000,loanAmount:3200000,loanYears:7,loanRate:.04,workingCapitalRate:.05,capex:{2026:284966,2027:299214,2028:314175},
   rates:{'Autres produits d’exploitation':{2026:165518/12403419,2027:165518/12403419,2028:165518/12403419},'Marchandises et approvisionnements':{2026:-7553179/12403419,2027:-7553179/12403419,2028:-7553179/12403419},'Services et biens divers':{2026:-1708634/12403419,2027:-1708634/12403419,2028:-1708634/12403419},'Frais de personnel':{2026:-2336496/12403419,2027:-2336496/12403419,2028:-2336496/12403419},'Autres charges d’exploitation':{2026:-119208/12403419,2027:-119208/12403419,2028:-119208/12403419},'Amortissements et réductions de valeur':{2026:-271396/12403419,2027:-271396/12403419,2028:-271396/12403419},'Produits financiers':{2026:15019/12403419,2027:15019/12403419,2028:15019/12403419},'Charges financières historiques':{2026:-47801/12403419,2027:-47801/12403419,2028:-47801/12403419},'Impôts sur le résultat':{2026:-142705/12403419,2027:-142705/12403419,2028:-142705/12403419}}
 });
-export interface PublicUser { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; createdAt:string; updatedAt:string; lastLoginAt:string|null }
-export const toPublicUser = ({passwordHash:_hash,passwordSalt:_salt,...user}:User):PublicUser => user;
+export interface PublicUser { id:string; name:string; email:string; role:Role; status:Status; analysisAccess:string[]; companyIds?:string[]; equinoxAccess?:boolean; createdAt:string; updatedAt:string; lastLoginAt:string|null }
+/** Liste fermée : aucune propriété secrète ou ancienne ne quitte le serveur. */
+export const toPublicUser = (user:User):PublicUser => ({
+  id:user.id,name:user.name,email:user.email,role:user.role==='admin'?'admin':'user',status:user.status,
+  analysisAccess:user.analysisAccess,companyIds:user.companyIds,equinoxAccess:user.equinoxAccess??false,
+  createdAt:user.createdAt,updatedAt:user.updatedAt,lastLoginAt:user.lastLoginAt,
+});
+export const canAccessEquinox = (user:Pick<PublicUser,'role'|'equinoxAccess'>) => user.role==='admin'||user.equinoxAccess===true;
 export type ApiResponse<T>={data:T}|{error:{code:string;message:string}};
 export * from './employee-cost-allocation';
 export interface AccountMonthlyAmounts { accountId:string; values:Record<string,number> }

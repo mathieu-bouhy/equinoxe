@@ -55,11 +55,11 @@ export function CashEvolution({ companyId, editable, companyName = 'Gimi', compa
         <div className="cash-chart-legend"><span className="cash-average-key"/>Moyenne journalière du mois <span className="cash-range-key"/>Minimum–maximum des soldes journaliers <small>Montants en milliers d’euros</small></div>
         <div className="cash-chart-scroll"><div className="cash-chart" role="img" aria-label="Évolution mensuelle de la trésorerie moyenne avec minimum et maximum ; valeurs détaillées dans le tableau ci-dessous.">
           <ResponsiveContainer width="100%" height={360}><ComposedChart data={chart} margin={{ top: 24, right: 28, bottom: 30, left: 10 }}>
-            <CartesianGrid stroke="#eadbc6" vertical={false}/><XAxis dataKey="month" tickFormatter={label} angle={-45} textAnchor="end" height={64} interval={0} tick={{ fontSize: 11 }} tickMargin={12}/>
+            <CartesianGrid stroke="#e0e7e3" vertical={false}/><XAxis dataKey="month" tickFormatter={label} angle={-45} textAnchor="end" height={64} interval={0} tick={{ fontSize: 11 }} tickMargin={12}/>
             <YAxis tickFormatter={value => new Intl.NumberFormat('fr-BE').format(Number(value))} width={65} domain={['auto', 'auto']} tick={{ fontSize: 12 }}/>
-            <Tooltip content={<CashTooltip/>}/><ReferenceLine y={0} stroke="#947863"/>
-            <Line type="linear" dataKey="meanK" name="Moyenne" stroke="#ac7614" strokeWidth={2} dot={{ r: 4, fill: '#f4b533', stroke: '#724e17' }} isAnimationActive={false}>
-              <ErrorBar dataKey="range" width={9} strokeWidth={2} stroke="#937b61" direction="y"/>
+            <Tooltip content={<CashTooltip/>}/><ReferenceLine y={0} stroke="#81968c"/>
+            <Line type="linear" dataKey="meanK" name="Moyenne" stroke="var(--brand-deep)" strokeWidth={2} dot={{ r: 4, fill: 'var(--brand-accent)', stroke: 'var(--brand-deep)' }} isAnimationActive={false}>
+              <ErrorBar dataKey="range" width={9} strokeWidth={2} stroke="#81968c" direction="y"/>
             </Line>
           </ComposedChart></ResponsiveContainer>
         </div></div>

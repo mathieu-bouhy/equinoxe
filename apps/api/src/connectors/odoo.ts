@@ -1,3 +1,4 @@
+import { ReportCache } from '../services/report-cache';
 import { config, type OdooConnection } from '../config';
 import { loadAccountingCoverage } from './odoo-accounting-coverage';
 import { loadCashAudit } from './odoo-cash-audit';
@@ -43,6 +44,7 @@ function buildConfiguredLines(keys:string[],sections:ProfitLossSection[],account
 }
 
 export class OdooConnector {
+  private readonly reports = new ReportCache();
   async getCashAudit(accountIds: number[], moveIds: number[], through: string) {
     const uid = await this.authenticate();
     return loadCashAudit((model, method, args, kwargs) => this.call(uid, model, method, args, kwargs), accountIds, moveIds, through);
@@ -140,7 +142,10 @@ export class OdooConnector {
     const base=this.settings.baseUrl?.replace(/\/$/,'')??null;
     return rows.map(row => ({ id: String(row.id), date: row.date, label: row.name, partner: row.partner_id ? row.partner_id[1] : null, debit: row.debit ?? 0, credit: row.credit ?? 0, odooUrl:base?`${base}/web#id=${encodeURIComponent(String(row.id))}&model=account.move.line&view_type=form`:null }));
   }
-  async getProfitLoss(years: number[], sections: ProfitLossSection[] = [], subsections: ProfitLossSubsection[] = [], includeDraftInvoices = false, asOf?:string, everyYearThroughMonth?:number): Promise<ProfitLossReport> {
+  async getProfitLoss(years: number[], sections: ProfitLossSection[] = [], subsections: ProfitLossSubsection[] = [], includeDraftInvoices = false, asOf?:string, everyYearThroughMonth?:number):Promise<ProfitLossReport>{
+    return this.reports.get(JSON.stringify(['getProfitLoss',years,sections,subsections,includeDraftInvoices,asOf,everyYearThroughMonth]),()=>this.loadProfitLoss(years,sections,subsections,includeDraftInvoices,asOf,everyYearThroughMonth));
+  }
+  private async loadProfitLoss(years: number[], sections: ProfitLossSection[] = [], subsections: ProfitLossSubsection[] = [], includeDraftInvoices = false, asOf?:string, everyYearThroughMonth?:number): Promise<ProfitLossReport> {
     const uid = await this.authenticate();
     const stateDomain = includeDraftInvoices ? ['parent_state', 'in', ['posted', 'draft']] : ['parent_state', '=', 'posted'];
     const groups = await Promise.all(years.map(year => {const end=everyYearThroughMonth?new Date(Date.UTC(year,everyYearThroughMonth,0)).toISOString().slice(0,10):asOf&&year===Number(asOf.slice(0,4))?asOf:`${year}-12-31`;return this.call(uid, 'account.move.line', 'read_group', [[stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', end]], ['balance'], ['account_id']], { lazy: false }) as Promise<Group[]>}));
@@ -164,6 +169,9 @@ export class OdooConnector {
     return { years, lines, generatedAt: new Date().toISOString(), source: 'odoo' };
   }
   async getProfitLossLtm(periods:ProfitLossPeriod[],sections:ProfitLossSection[],includeDraftInvoices=false):Promise<ProfitLossLtmReport>{
+    return this.reports.get(JSON.stringify(['getProfitLossLtm',periods,sections,includeDraftInvoices]),()=>this.loadProfitLossLtm(periods,sections,includeDraftInvoices));
+  }
+  private async loadProfitLossLtm(periods:ProfitLossPeriod[],sections:ProfitLossSection[],includeDraftInvoices=false):Promise<ProfitLossLtmReport>{
     const uid=await this.authenticate(),stateDomain=includeDraftInvoices?['parent_state','in',['posted','draft']]:['parent_state','=','posted'];
     const groups=await Promise.all(periods.map(period=>this.call(uid,'account.move.line','read_group',[[stateDomain,['date','>=',period.start],['date','<=',period.end]],['balance'],['account_id']],{lazy:false}) as Promise<Group[]>));
     const ids=[...new Set(groups.flat().flatMap(group=>group.account_id?[group.account_id[0]]:[]))],accounts=ids.length?await this.call(uid,'account.account','read',[ids],{fields:['code','name','account_type']}) as Account[]:[],byId=new Map(accounts.map(account=>[account.id,account]));
@@ -171,7 +179,10 @@ export class OdooConnector {
     groups.forEach((periodGroups,index)=>periodGroups.forEach(group=>{const account=group.account_id?byId.get(group.account_id[0]):undefined;if(!account||!isProfitLossAccountCode(account.code)||typeof group.balance!=='number'||!group.account_id)return;const id=String(group.account_id[0]),previous=details.get(id)??{id,code:account.code,label:String(account.name??group.account_id[1]??'Compte sans libellé'),values:{}};const key=periods[index].key;previous.values[key]=(previous.values[key]??0)-group.balance;details.set(id,previous)}));
     return {periods,lines:buildConfiguredLines(periods.map(period=>period.key),sections,[...details.values()]),generatedAt:new Date().toISOString(),source:'odoo'};
   }
-  async getProfitLossMonths(year: number, sections: ProfitLossSection[] = [], includeDraftInvoices = false, asOf?: string): Promise<ProfitLossMonthlyReport> {
+  async getProfitLossMonths(year: number, sections: ProfitLossSection[] = [], includeDraftInvoices = false, asOf?: string):Promise<ProfitLossMonthlyReport>{
+    return this.reports.get(JSON.stringify(['getProfitLossMonths',year,sections,includeDraftInvoices,asOf]),()=>this.loadProfitLossMonths(year,sections,includeDraftInvoices,asOf));
+  }
+  private async loadProfitLossMonths(year: number, sections: ProfitLossSection[] = [], includeDraftInvoices = false, asOf?: string): Promise<ProfitLossMonthlyReport> {
     const end = asOf && year === Number(asOf.slice(0,4)) ? asOf : `${year}-12-31`;
     const uid = await this.authenticate(), stateDomain = includeDraftInvoices ? ['parent_state', 'in', ['posted', 'draft']] : ['parent_state', '=', 'posted'];
     const groups = await this.call(uid, 'account.move.line', 'read_group', [[stateDomain, ['date', '>=', `${year}-01-01`], ['date', '<=', end]], ['balance'], ['account_id', 'date:month']], { lazy: false }) as MonthlyGroup[];
@@ -251,6 +262,9 @@ export class OdooConnector {
   }
   /** Actual posted amounts by account/month for computed allocation keys. No Odoo writes. */
   async getProfitLossAccountMonths(accountIds:string[],years:number[],asOf?:string):Promise<import('@equinoxe/shared').AccountMonthlyAmounts[]>{
+    return this.reports.get(JSON.stringify(['getProfitLossAccountMonths',accountIds,years,asOf]),()=>this.loadProfitLossAccountMonths(accountIds,years,asOf));
+  }
+  private async loadProfitLossAccountMonths(accountIds:string[],years:number[],asOf?:string):Promise<import('@equinoxe/shared').AccountMonthlyAmounts[]>{
     if(!accountIds.length)return [];
     if(accountIds.some(id=>!/^\d+$/.test(id))||!years.length||years.some(year=>!Number.isInteger(year)||year<2000||year>2100))throw new ConnectorError('Période ou comptes invalides.','forbidden');
     const uid=await this.authenticate(),end=asOf??`${Math.max(...years)}-12-31`;

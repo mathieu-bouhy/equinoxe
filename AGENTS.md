@@ -97,13 +97,13 @@ Pour publier, selon la politique validée en section 1 :
 
 ## 7. Utilisateurs et droits
 
-- Deux rôles : administrateur et lecteur. Un administrateur gère les utilisateurs et configurations ; un lecteur ne voit que les sociétés et dossiers analysés autorisés.
+- Deux rôles affichés : Administration et Utilisateur (refonte validée le 9 octobre 2026). Administration donne accès à toute la plateforme. Un utilisateur reçoit les sociétés, dossiers analysés et accès aux applications Equinoxe explicitement sélectionnés, à la création comme à la modification. La configuration reste réservée à Administration. Les anciens comptes `viewer` sont compatibles et affichés comme Utilisateur ; Facturation nécessite désormais le droit Equinoxe pour les non-administrateurs.
 - Contrôler les rôles et accès dans le backend pour chaque route, y compris les détails, exports et appels directs par URL.
 - Isoler les configurations par société/dossier ; modifier Gimi ne doit jamais modifier Lonneux ou Medipost.
 - Création, modification, retrait d’accès et gestion du mot de passe doivent être persistants et vérifiables après reconnexion.
 - Ne jamais réinitialiser un mot de passe à partir des variables du premier administrateur lors d’un démarrage ordinaire.
 - Préserver une possibilité d’administration ; faire valider une suppression ou désactivation sensible, notamment celle du dernier administrateur actif.
-- Hash robuste, cookie HTTP-only, gestion d’expiration et des comptes inactifs, erreurs lisibles, aucun mot de passe visible dans les listes ou logs.
+- Hash robuste, cookie HTTP-only, gestion d’expiration et des comptes inactifs, erreurs lisibles, aucun mot de passe existant visible dans les listes ou logs. Le nouveau mot de passe est affichable pendant sa saisie et peut remplacer l’ancien. Afficher la dernière connexion réussie dans la gestion des utilisateurs (heure de Bruxelles).
 - Une connexion dans un autre environnement doit consulter les mêmes utilisateurs lorsque cet environnement est annoncé comme connecté à la base partagée.
 
 ## 8. Vérifications avant livraison
