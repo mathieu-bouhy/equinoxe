@@ -24,7 +24,7 @@ export interface ProfitLossSection { id:string; companyId:string; label:string; 
 export interface ProfitLossSubsection { id:string; companyId:string; parentSectionId:string; label:string; prefixes:string[]; order:number; createdAt:string; updatedAt:string }
 export interface ProfitLossSubsectionLine { id:string; label:string; values:Record<string,number>; accounts:ProfitLossAccount[] }
 export interface ProfitLossLine { key:string; label:string; values:Record<string,number>; accounts?:ProfitLossAccount[]; subsections?:ProfitLossSubsectionLine[] }
-export interface ProfitLossReport { years:number[]; lines:ProfitLossLine[]; generatedAt:string; source:'odoo' }
+export interface ProfitLossReport { years:number[]; lines:ProfitLossLine[]; generatedAt:string; source:'odoo'; payrollCutoff?:{period:string;postingPeriod:string;amount:number;entries:Array<{id:number;date:string;move:string;code:string;accountId:string;accountLabel:string;label:string;debit:number;credit:number}>} }
 export interface MarginAnalysisRow { key:string; label:string; values:Record<string,number>; accounts:ProfitLossAccount[] }
 export interface MarginAnalysisBlock { key:'revenue'|'purchases'|'margin'; label:string; rows:MarginAnalysisRow[]; totals:Record<string,number> }
 export interface MarginAnalysisReport { years:number[]; lastClosedMonth:string; extrapolatedYear:number; factor:number; blocks:MarginAnalysisBlock[]; generatedAt:string }

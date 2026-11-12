@@ -13,6 +13,7 @@ Règles validées le 8 septembre 2026, complémentaires à [AGENTS.md](../AGENTS
 - Conserver la provenance, la période et les limites de précision. Ne pas remplacer une donnée indisponible par zéro sans justification.
 - Toute rubrique utilise la configuration et ses préfixes/relations, pas une approximation basée uniquement sur le libellé. Un code `false`, vide ou invalide n’est pas un compte de ventes.
 - Le mois clôturé enregistré borne les rapports concernés. Ne pas utiliser automatiquement le mois courant de l’ordinateur à sa place.
+- Lonneux, extrapolation de septembre 2026 : ajouter avant annualisation les seules OD de septembre identifiees dans le service de rattachement, comptabilisees le 5 octobre. Exclure l'OD libellee octobre et les factures d'octobre de cet ajustement. Afficher les lignes sources dans la projection ; les rapports realises, mensuels, bilan et tresorerie conservent les dates comptables. Des octobre cloture, ne plus ajouter ces OD, deja comprises dans le cumul Odoo. Aucun dedoublonnage automatique ni ajout de 13e mois dans ce rattachement.
 - LTM Gimi : périodes consécutives de douze mois inclusifs, de la plus ancienne à gauche à la plus récente à droite ; pas de fenêtre de treize mois.
 - Extrapolation : année courante configurée = cumul janvier à mois clôturé × 12 / numéro du mois ; années closes inchangées. Ne jamais annualiser deux fois.
 - L’expansion mensuelle ajoute des colonnes horizontalement, pas des lignes. Préserver les mêmes détails et règles de configuration entre normal, LTM et extrapolé.
