@@ -1,5 +1,6 @@
 import { ReportCache } from '../services/report-cache';
 import { config, type OdooConnection } from '../config';
+import { SEPTEMBER_PAYROLL_MOVES, type PayrollCutoffEntry } from '../services/lonneux-payroll-cutoff';
 import { loadAccountingCoverage } from './odoo-accounting-coverage';
 import { loadCashAudit } from './odoo-cash-audit';
 import { loadSoConsumables } from './odoo-so-consumables';
@@ -44,6 +45,28 @@ function buildConfiguredLines(keys:string[],sections:ProfitLossSection[],account
 }
 
 export class OdooConnector {
+  async getLonneuxSeptemberPayrollCutoff(): Promise<PayrollCutoffEntry[]> {
+    const uid = await this.authenticate();
+    const moves = await this.call(uid, 'account.move', 'search_read', [[['name','in',SEPTEMBER_PAYROLL_MOVES],['state','=','posted'],['move_type','=','entry'],['date','=','2026-10-05']]], {fields:['name'],limit:5}) as Array<{id:number;name:string}>;
+    if (moves.length !== SEPTEMBER_PAYROLL_MOVES.length) throw new ConnectorError('Les quatre OD de septembre Lonneux ne sont pas disponibles.');
+    type Row = {id:number;date:string;name:string;move_id:[number,string];account_id:[number,string];debit:number;credit:number};
+    const rows:Row[]=[];
+    let after=0;
+    for (;;) {
+      const batch=await this.call(uid,'account.move.line','search_read',[[['move_id','in',moves.map(move=>move.id)],['id','>',after]]],{fields:['date','name','move_id','account_id','debit','credit'],order:'id asc',limit:500}) as Row[];
+      if(!batch.length)break;
+      rows.push(...batch);after=batch[batch.length-1].id;
+      if(rows.length>10000)throw new ConnectorError('Volume inattendu dans les quatre OD de paie.');
+    }
+    const ids=[...new Set(rows.map(row=>row.account_id[0]))];
+    const accounts=ids.length?await this.call(uid,'account.account','read',[ids],{fields:['code','name','account_type']}) as Account[]:[];
+    const byId=new Map(accounts.map(account=>[account.id,account]));
+    return rows.flatMap(row=>{
+      const account=byId.get(row.account_id[0]);
+      if(!account||typeof account.code!=='string'||!account.code.startsWith('62'))return [];
+      return [{id:row.id,date:row.date,move:moves.find(move=>move.id===row.move_id[0])!.name,code:account.code,accountId:String(account.id),accountLabel:String(account.name||account.code),label:row.name,debit:row.debit,credit:row.credit}];
+    });
+  }
   private readonly reports = new ReportCache();
   async getCashAudit(accountIds: number[], moveIds: number[], through: string) {
     const uid = await this.authenticate();
