@@ -1,6 +1,8 @@
 import { expect,test } from 'bun:test';
 import { analysisRows,accountMovements,managementFees } from '../src/services/gimi-analysis';
 import { payrollSummary,payrollDepartments } from '../src/services/gimi-payroll';
+import { gimiAnalyticBudget2026,gimiRevenueBudget2026 } from '../src/services/gimi-budget';
+import type { AnalyticProfitLossReport } from '@equinoxe/shared';
 test('charges signées et budget YTD, sans transformer une absence en zéro',()=>{
  const rows=analysisRows([{key:'sbd',label:'Services et biens divers',values:{'2025':-661000,'2026':-926000},accounts:[]}],'2026','2025',2026,10,'ytd');
  const sbd=rows[4];expect(sbd.delta).toBe(-265000);expect(sbd.budget).toBe(-860000);expect(sbd.budgetDelta).toBe(-66000);expect(rows[0].actual).toBeNull();
@@ -26,4 +28,20 @@ test('le calendrier RH donne 14 entrées et 2 sorties, sans compter le CDI d’o
 test('les mouvements RH respectent le mois clôturé et signalent les mois non actualisés',()=>{
  expect(payrollSummary('2026-06').entrants).toBe(10);expect(payrollSummary('2026-06').net).toBe(9);
  expect(payrollSummary('2026-11').complete).toBe(false);expect(payrollSummary('2026-11').through).toBe('2026-10');expect(payrollSummary('2025-10').available).toBe(false);
+});
+test('la sélection multiple reprend son budget analytique, proratisé uniquement en YTD',()=>{
+ const departments=['fireInstallation','fireMaintenance'] as const;
+ const labels=['Chiffre d’affaires','Marchandises','Sous-traitance','Services et biens divers','Personnel','Charges d’exploitation','Produits d’exploitation'];
+ const report:AnalyticProfitLossReport={mode:'annual',departments:[...departments],lastClosedMonth:'2026-10',periods:[],revenueKey:'0',unallocated:[],warnings:[],generatedAt:'',lines:labels.map((label,i)=>({key:String(i),label,kind:'accounts',values:{'2025':-100,'2026':-150},monthlyValues:{'2026-01':-25},originalValues:{},originalMonthlyValues:{'2026-01':-100},accounts:[],subsections:[]}))};
+ const budget=gimiAnalyticBudget2026(report,[...departments]);
+ const ytd=analysisRows(report.lines,'2026','2025',2026,10,'ytd',budget),ltm=analysisRows(report.lines,'2026','2025',2026,10,'ltm',budget);
+ expect(ytd[0].budget).toBeCloseTo((gimiRevenueBudget2026.fireInstallation+gimiRevenueBudget2026.fireMaintenance)*10/12);
+ expect(ytd[1].budget).toBeCloseTo(-2724000*.25*10/12);
+ expect(ltm[1].budget).toBe(-2724000*.25);
+ expect(ytd[6].budget).toBeCloseTo((budget['Marge brute']!+budget['Coûts hors achats']!)*10/12);
+ expect(ytd[1].actual).toBe(-150);
+});
+test('une ventilation budgétaire manquante ne reprend jamais le budget société',()=>{
+ const rows=analysisRows([{key:'p',label:'Personnel',values:{'2025':-50,'2026':-80}}],'2026','2025',2026,10,'ytd',{});
+ expect(rows[5].actual).toBe(-80);expect(rows[5].budget).toBeNull();expect(rows[5].budgetDelta).toBeNull();
 });
