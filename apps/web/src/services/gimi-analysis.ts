@@ -1,4 +1,4 @@
-import type { ProfitLossLine } from '@equinoxe/shared';
+import type { ProfitLossAccount, ProfitLossLine } from '@equinoxe/shared';
 import { gimiBudget2026 } from './gimi-budget';
 
 export const analysisLabels=['Chiffre d’affaires','Marchandises','Marge brute','Sous-traitance','Services et biens divers','Personnel','EBITDA'] as const;
@@ -15,8 +15,18 @@ export function analysisRows(lines:ProfitLossLine[],current:string,previous:stri
 }
 
 /** Account deltas use source values, including positive releases and credits. */
+export type AccountMovement=ProfitLossAccount & {actual:number;prior:number;delta:number;members?:AccountMovement[]};
+export function managementFees(line:ProfitLossLine|undefined,current:string,previous:string):AccountMovement|null {
+  const members=(line?.accounts??[]).filter(a=>['613208','618000'].includes(a.code))
+    .map(a=>({...a,actual:a.values[current]??0,prior:a.values[previous]??0,delta:(a.values[current]??0)-(a.values[previous]??0)}));
+  if(!members.length)return null;
+  const actual=members.reduce((sum,a)=>sum+a.actual,0),prior=members.reduce((sum,a)=>sum+a.prior,0);
+  return {id:'bpi-management-fees',code:'613208 + 618000',label:'Bajoma + rémunérations des dirigeants',values:{[current]:actual,[previous]:prior},actual,prior,delta:actual-prior,members};
+}
 export function accountMovements(line:ProfitLossLine|undefined,current:string,previous:string){
-  return (line?.accounts??[]).filter(a=>a.values[current]!==undefined||a.values[previous]!==undefined)
+  const group=managementFees(line,current,previous);
+  const rows:AccountMovement[]=(line?.accounts??[]).filter(a=>!group||!['613208','618000'].includes(a.code)).filter(a=>a.values[current]!==undefined||a.values[previous]!==undefined)
     .map(a=>({...a,actual:a.values[current]??0,prior:a.values[previous]??0,delta:(a.values[current]??0)-(a.values[previous]??0)}))
-    .filter(a=>Math.abs(a.delta)>0.005).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+  if(group)rows.push(group);
+  return rows.filter(a=>Math.abs(a.delta)>0.005).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
 }
