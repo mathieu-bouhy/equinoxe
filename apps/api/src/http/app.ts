@@ -150,8 +150,8 @@ export function createApp(store=new Store(config.dataDir,config.databaseUrl),aut
   const year=Number(url.searchParams.get('year')),ytdValue=url.searchParams.get('ytd'),ytd=ytdValue==='true';
   if(!Number.isInteger(year)||year<2000||year>2100||url.searchParams.getAll('ytd').length>1||ytdValue!==null&&!['true','false'].includes(ytdValue))return secured(fail('VALIDATION','Année ou mode YTD invalide.',422));
   if(ytd&&company.slug!=='gimi')return secured(fail('NOT_AVAILABLE','Le détail YTD est réservé à Gimi.',409));
-  const sections=(await store.pnlSections.read()).filter(s=>s.companyId===company.id),closed=company.slug==='eurodrill'||ytd?(await store.reportSettings.read()).find(row=>row.companyId===company.id)?.lastClosedMonth:undefined;
-  if((company.slug==='eurodrill'||ytd)&&!closed)return secured(fail('NOT_FOUND','Paramètre de clôture introuvable.',404));
+  const bounded=['eurodrill','lonneux'].includes(company.slug)||ytd,sections=(await store.pnlSections.read()).filter(s=>s.companyId===company.id),closed=bounded?(await store.reportSettings.read()).find(row=>row.companyId===company.id)?.lastClosedMonth:undefined;
+  if(bounded&&!closed)return secured(fail('NOT_FOUND','Paramètre de clôture introuvable.',404));
   const asOf=closed?new Date(Date.UTC(ytd?year:Number(closed.slice(0,4)),Number(closed.slice(5,7)),0)).toISOString().slice(0,10):undefined;
   return secured(json(await odooFor(company).getProfitLossMonths(year,sections,company.slug==='lonneux',asOf)));
  }

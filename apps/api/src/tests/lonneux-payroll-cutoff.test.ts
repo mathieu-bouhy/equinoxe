@@ -71,8 +71,12 @@ test('la route ne rattache que septembre extrapolé Lonneux et conserve le réal
     await store.historicalBalances.write([]);
     const close=async(month:string)=>store.reportSettings.mutate(rows=>({values:rows.map(row=>row.companyId===company.id?{...row,lastClosedMonth:month}:row),result:null}));
     await close('2026-09');
-    let reads=0;
-    const connector={getProfitLoss:async()=>report(),getLonneuxSeptemberPayrollCutoff:async()=>{reads++;return entries();}} as unknown as OdooConnector;
+    let reads=0,monthlyArgs:{year:number;includeDraft:boolean;asOf?:string}|undefined;
+    const connector={
+      getProfitLoss:async()=>report(),
+      getProfitLossMonths:async(year:number,_sections:ProfitLossSection[],includeDraft:boolean,asOf?:string)=>{monthlyArgs={year,includeDraft,asOf};return {year,months:[],lines:[],generatedAt:'',source:'odoo' as const};},
+      getLonneuxSeptemberPayrollCutoff:async()=>{reads++;return entries();},
+    } as unknown as OdooConnector;
     const app=createApp(store,auth,connector,undefined,undefined,()=>connector);
     const login=await app(new Request('http://api/v1/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'admin@equinoxe.local',password:'change-me-now'})}));
     const headers={cookie:login.headers.get('set-cookie')!.split(';')[0]};
@@ -81,6 +85,8 @@ test('la route ne rattache que septembre extrapolé Lonneux et conserve le réal
     expect(corrected.lines[0].values['2026']).toBeCloseTo(-2000*12/9,5);
     expect(corrected.payrollCutoff.entries).toHaveLength(4);
     expect((await get('profit-loss')).lines[0].values['2026']).toBe(-1000);
+    await get('profit-loss/months?year=2026');
+    expect(monthlyArgs).toEqual({year:2026,includeDraft:true,asOf:'2026-09-30'});
     expect(reads).toBe(1);
     await close('2026-10');
     expect((await get('profit-loss/extrapolated')).lines[0].values['2026']).toBe(-1200);
