@@ -56,6 +56,7 @@ function BfrDashboard({companyId}:{companyId:string}){
 }
 type CashDetail={label:string;code?:string;values:Record<string,number>;excluded?:boolean};
 function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowReport; balance?: BalanceReport; profitLoss?: ProfitLossReport }) {
+  const cashAmount = (amount:number) => kAmount(Math.abs(amount)<0.005?0:amount);
   const { current } = useOutletContext<Context>();
   const localBalance = useQuery({ queryKey: ['balance', current.id], queryFn: () => api.balanceSheet(current.id) });
   const localProfit = useQuery({ queryKey: ['profit-loss', current.id], queryFn: () => api.profitLoss(current.id) });
@@ -94,35 +95,36 @@ function CashFlowBridge({ report, balance, profitLoss }: { report: CashFlowRepor
   const reconciliationGap = values(year => (cash[String(year)] ?? 0) - (openingCash[String(year)] ?? 0) - (free[String(year)] ?? 0) - (shareholderDistributions[String(year)] ?? 0));
   const reconciliation = [
     { key: 'cash-opening', label: 'Trésorerie de début d’année', values: openingCash },
-    { key: 'cash-free-flow', label: 'Cash-flow libre après dette', values: free },
+    { key: 'cash-free-flow', label: report.through ? 'Flux net après financements, avant dividendes' : 'Cash-flow libre après dette', values: free },
     { key: 'cash-distributions', label: '− Dividendes effectivement décaissés', values: shareholderDistributions },
     { key: 'cash-gap', label: 'Écart de réconciliation à documenter', values: reconciliationGap },
     { key: 'cash-ending', label: 'Trésorerie de fin d’année', values: cash },
   ];
   const reconciliationDetails: Record<string, CashDetail[]> = {
-    'cash-opening': cashAccounts,
-    'cash-ending': cashAccounts,
+    'cash-opening': nonZero(report.accountDetails?.['cash-opening'] ?? cashAccounts),
+    'cash-ending': nonZero(report.accountDetails?.['cash-ending'] ?? cashAccounts),
     'cash-distributions': shareholderDistributionDetails,
   };
 
   return <Card className="cash-flow-card">
-    <div className="profit-loss-heading"><div><p className="eyebrow">Capacité de financement</p><h2>Pont de trésorerie</h2><p>Du bénéfice après impôts jusqu’au cash-flow réellement libre après dette.</p></div></div>
+    <div className="profit-loss-heading"><div><p className="eyebrow">Capacité de financement</p><h2>Pont de trésorerie</h2>{report.through&&<p>Arrêté au {new Date(`${report.through}T12:00:00`).toLocaleDateString('fr-BE')} · montants en milliers d’euros</p>}<p>Du résultat après impôts à la variation de trésorerie, avec le détail des mouvements.</p></div></div>
     {resolvedBalance?.source==='mixed'&&<p className="report-note">Ce pont de trésorerie utilise uniquement les mouvements Odoo. L’historique Excel 2024–2025 restauré dans le bilan n’est pas reconstitué dans ce pont ; ses flux historiques et sa réconciliation ne sont donc pas validés.</p>}
     <div className="report-table"><table className="report-matrix cash-flow-matrix"><thead><tr><th>Rubrique</th>{report.years.map(year => <th key={year}>{year}</th>)}</tr></thead><tbody>
       {report.lines.map(line => {
-        const accounts = details[line.key] ?? [];
+        const accounts = nonZero<CashDetail>(report.accountDetails?.[line.key] ?? details[line.key] ?? []);
         const expanded = open.has(line.key);
-        const detail = line.key === 'capex' ? 'Mapping : variation des soldes des immobilisations bilantaires 20 à 27 entre N et N−1, hors amortissements cumulés, réductions de valeur et charges 63***.' : line.detail;
-        return <Fragment key={line.key}><tr className={/Cash-flow/.test(line.label) ? 'calculation-row key-calculation' : ''}><td>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} comptes</small></button> : <span>{line.label}{detail && <small className="cash-info" title={detail}>{line.key === 'capex' ? ' · Variation comptes 20–27 · amortissements 63*** exclus' : 'i'}</small>}</span>}</td>{report.years.map(year => <td key={year}>{kAmount(line.values[String(year)] ?? 0)}</td>)}</tr>{expanded && accounts.map(account => <tr className={`account-row ${account.excluded?'non-cash-row':''}`} key={`${line.key}-${account.code}`}><td><em>{account.code}</em>{account.label}{account.excluded&&<small>Opération non monétaire · exclue du CapEx</small>}</td>{report.years.map(year => <td key={year}>{kAmount(account.values[String(year)] ?? 0)}</td>)}</tr>)}</Fragment>;
+        const detail = line.detail;
+        return <Fragment key={line.key}><tr className={['cfads','free-cash-flow'].includes(line.key) || /Cash-flow/.test(line.label) ? 'calculation-row key-calculation' : ''}><td>{accounts.length ? <button title={line.detail} className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} comptes</small></button> : <span>{line.label}{detail && <small className="cash-info" title={detail}>{line.key === 'capex' ? ' · Variation comptes 20–27 · amortissements 63*** exclus' : 'i'}</small>}</span>}</td>{report.years.map(year => <td key={year}>{cashAmount(line.values[String(year)] ?? 0)}</td>)}</tr>{expanded&&detail&&<tr className="account-row"><td colSpan={report.years.length+1}><small>{detail}</small></td></tr>}{expanded && accounts.map(account => <tr className={`account-row ${account.excluded?'non-cash-row':''}`} key={`${line.key}-${account.code}`}><td><em>{account.code}</em>{account.label}{account.excluded&&<small>Opération non monétaire · exclue du CapEx</small>}</td>{report.years.map(year => <td key={year}>{cashAmount(account.values[String(year)] ?? 0)}</td>)}</tr>)}</Fragment>;
       })}
     </tbody></table></div>
-    <section className="cash-reconciliation"><h3>Réconciliation de la trésorerie · décembre à décembre</h3><p>Trésorerie de début + cash-flow libre après dette + distributions comptabilisées = trésorerie de fin. L’écart reste explicite tant qu’il n’est pas justifié par des comptes.</p><div className="report-table"><table className="report-matrix cash-flow-matrix reconciliation-matrix"><thead><tr><th>Rubrique</th>{report.years.map(year=><th key={year}>{year}</th>)}</tr></thead><tbody>
+    <section className="cash-reconciliation"><h3>Réconciliation de la trésorerie · ouverture à date de clôture</h3><p>Trésorerie de début + flux après financements − dividendes payés = trésorerie de fin. Le solde résiduel est toujours calculé et reste visible.</p><div className="report-table"><table className="report-matrix cash-flow-matrix reconciliation-matrix"><thead><tr><th>Rubrique</th>{report.years.map(year=><th key={year}>{year}</th>)}</tr></thead><tbody>
       {reconciliation.map(line => {
         const expanded = open.has(line.key);
         const accounts = reconciliationDetails[line.key] ?? [];
-        return <Fragment key={line.key}><tr className={line.key === 'cash-ending' ? 'calculation-row key-calculation' : line.key === 'cash-gap' ? 'reconciliation-gap' : ''}><td>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} comptes</small></button> : <span>{line.label}</span>}</td>{report.years.map(year => <td key={year}>{kAmount(line.values[String(year)] ?? 0)}</td>)}</tr>{expanded && accounts.map(account => <tr className="account-row" key={`${line.key}-${account.code}-${account.label}`}><td><em>{account.code}</em>{account.label}</td>{report.years.map(year => <td key={year}>{kAmount(account.values[String(year)] ?? 0)}</td>)}</tr>)}</Fragment>;
+        return <Fragment key={line.key}><tr className={line.key === 'cash-ending' ? 'calculation-row key-calculation' : line.key === 'cash-gap' ? 'reconciliation-gap' : ''}><td>{accounts.length ? <button className="drilldown-button" onClick={() => toggle(line.key)} aria-expanded={expanded}>{expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}<span>{line.label}</span><small>{accounts.length} comptes</small></button> : <span>{line.label}</span>}</td>{report.years.map(year => <td key={year}>{cashAmount(line.values[String(year)] ?? 0)}</td>)}</tr>{expanded && accounts.map(account => <tr className="account-row" key={`${line.key}-${account.code}-${account.label}`}><td><em>{account.code}</em>{account.label}</td>{report.years.map(year => <td key={year}>{cashAmount(account.values[String(year)] ?? 0)}</td>)}</tr>)}</Fragment>;
       })}
     </tbody></table></div></section>
+    {report.explanations&&<section className="cash-reconciliation"><h3>Comprendre les ajustements</h3>{report.explanations.map(note=><details className="report-note" key={note.title}><summary>{note.title}</summary><p>{note.text}</p>{note.sources?.map(source=><p key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.label}</a></p>)}</details>)}</section>}
     <p className="report-note">Les dividendes sont retenus uniquement lorsqu’une sortie de banque ou caisse est comptabilisée. Les écritures d’affectation 694 → 471, sans mouvement de trésorerie, sont exclues.</p>
   </Card>;
 }
