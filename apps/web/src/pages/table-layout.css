@@ -81,3 +81,21 @@
     min-width: 98px;
   }
 }
+
+/* Cash-flow explanations must wrap without pushing year columns off screen. */
+.cash-flow-card .cash-flow-matrix {
+  width: 100%;
+  min-width: 720px;
+  table-layout: fixed;
+}
+.cash-flow-card .cash-flow-matrix th:first-child,
+.cash-flow-card .cash-flow-matrix td:first-child {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cash-flow-card .drilldown-button { padding: 0; }
+.cash-flow-card .drilldown-button > span { min-width: 0; }
+.cash-flow-card .cash-flow-matrix td[colspan] { position: static; line-height: 1.6; }
