@@ -12,7 +12,7 @@ const groups=[
 ] as const;
 
 const category=(code:string)=>code.startsWith('21')?'software':code.startsWith('22')?'building':code.startsWith('23')?'tools':code.startsWith('241')?'vehicles':code.startsWith('240')?'it':code.startsWith('26')?'layout':'other';
-const isAccumulated=(row:Pick<HistoricalAccountBalance,'label'>)=>/AMORT|R[ÉE]DUCTION DE VALEUR/i.test(row.label);
+const isAccumulated=(row:Pick<HistoricalAccountBalance,'accountCode'|'label'>)=>/(?:009|9\d{2})$/.test(row.accountCode)||/AMORT|R[ÉE]DUCTION DE VALEUR/i.test(row.label);
 const cleanLabel=(row:HistoricalAccountBalance)=>row.label.replace(new RegExp(`^${row.accountCode}\\s*`),'').trim();
 const total=(rows:HistoricalAccountBalance[])=>rows.reduce((sum,row)=>sum+row.amount,0);
 
