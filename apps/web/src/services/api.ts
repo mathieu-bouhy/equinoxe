@@ -1,4 +1,4 @@
-import type { CapexReport } from '@equinoxe/shared';
+import type { CapexReport,LonneuxCapexReport } from '@equinoxe/shared';
 import type { MarginAnalysisReport, AccountAnalyticAllocation, AccountingEntry, AnalyticAllocationCode, BalanceReport, BfrReport, BfrSection, BillingSettings, CashFlowReport, Company, DashboardDefinition, EmployeeAnalyticAllocation, IntegrationMetadata, HistoricalAccountBalance, MedipostBusinessPlanAssumptions, ProfitLossLtmReport, ProfitLossMonthlyReport, ProfitLossReport, ProfitLossSection, ProfitLossSubsection, PublicUser, ReportSettings, TimeEntry } from '@equinoxe/shared';
 
 export class ApiError extends Error { constructor(public status:number,message:string) { super(message); } }
@@ -25,6 +25,7 @@ export const api={
   reportSettings:(id:string)=>request<ReportSettings>(company(id,'/report-settings')), saveReportSettings:(id:string,lastClosedMonth:string)=>request<ReportSettings>(company(id,'/report-settings'),{method:'PUT',body:JSON.stringify({lastClosedMonth})}),
   profitLoss:(id:string,years:number[]=[2024,2025,2026])=>request<ProfitLossReport>(company(id,`/profit-loss?years=${years.join(',')}`)), profitLossExtrapolated:(id:string)=>request<ProfitLossReport>(company(id,'/profit-loss/extrapolated')), profitLossLtm:(id:string)=>request<ProfitLossLtmReport>(company(id,'/profit-loss/ltm')), profitLossMonths:(id:string,year:number,ytd=false)=>request<ProfitLossMonthlyReport>(company(id,`/profit-loss/months?year=${year}${ytd?'&ytd=true':''}`)),
   capex:(id:string)=>request<CapexReport>(company(id,'/fixed-assets')),
+  lonneuxCapex:(id:string)=>request<LonneuxCapexReport>(company(id,'/fixed-assets')),
   balanceSheet:(id:string)=>request<BalanceReport>(company(id,'/balance-sheet?years=2024,2025,2026')), cashFlow:(id:string)=>request<CashFlowReport>(company(id,'/cash-flow?years=2024,2025,2026')),
   bfr:(id:string)=>request<BfrReport>(company(id,'/bfr?years=2023,2024,2025,2026')), bfrSections:(id:string)=>request<BfrSection[]>(company(id,'/bfr-sections')), saveBfrSections:(id:string,sections:BfrSection[])=>request<BfrSection[]>(company(id,'/bfr-sections'),{method:'PUT',body:JSON.stringify({sections})}),
   analyticAllocationCodes:(id:string)=>request<AnalyticAllocationCode[]>(company(id,'/analytic-allocation-codes')), saveAnalyticAllocationCodes:(id:string,codes:AnalyticAllocationCode[])=>request<AnalyticAllocationCode[]>(company(id,'/analytic-allocation-codes'),{method:'PUT',body:JSON.stringify({codes})}),
