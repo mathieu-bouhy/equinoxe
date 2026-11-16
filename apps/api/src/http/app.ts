@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { loadPartnerRankings } from '../services/partner-rankings';
 import { loadGimiCapex } from '../services/gimi-capex';
 import { loadLonneuxHistoricalCapex } from '../services/lonneux-capex';
 import { loadGimiCashFlow } from '../services/gimi-cash-flow';
@@ -87,6 +88,7 @@ export function createApp(store=new Store(config.dataDir,config.databaseUrl),aut
      try{return secured(json(await saveEmployeeAssignments(store,company.id,parsed.data)));}catch(error){if(error instanceof EmployeeAssignmentError)return secured(fail(error.status===409?'CONFLICT':'VALIDATION',error.message,error.status));throw error;}
    }
  }
+ const partnerRankingMatch=path.match(/^\/v1\/companies\/([^/]+)\/partner-rankings$/);if(partnerRankingMatch&&method==='GET'){const company=await companyFor(user,partnerRankingMatch[1]);if(!company)return secured(fail('FORBIDDEN','Accès à cette société refusé.',403));if(company.slug!=='gimi'||company.connectorType!=='odoo')return secured(fail('NOT_AVAILABLE','Classements disponibles pour GIMI uniquement.',409));const mode=url.searchParams.get('mode')??'ytd';if(!['ytd','ltm'].includes(mode))return secured(fail('VALIDATION','Période de classement invalide.',422));const [settings,allSections]=await Promise.all([store.reportSettings.read(),store.pnlSections.read()]),setting=settings.find(s=>s.companyId===company.id);if(!setting)return secured(fail('NOT_AVAILABLE','Dernier mois clôturé absent.',409));return secured(json(await loadPartnerRankings(odooFor(company),allSections.filter(s=>s.companyId===company.id),setting.lastClosedMonth,mode)));}
  const marginMatch=path.match(/^\/v1\/companies\/([^/]+)\/margin-analysis$/);
  if(marginMatch&&method==='GET'){
    const company=await companyFor(user,marginMatch[1]);

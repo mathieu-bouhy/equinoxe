@@ -110,3 +110,5 @@ export * from './cash-overview';
 
 export * from './capex';
 export * from './lonneux-capex';
+
+export * from './partner-rankings';

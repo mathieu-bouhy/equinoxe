@@ -1,3 +1,4 @@
+import { loadPartnerRankingSource } from './odoo-partner-rankings';
 import { loadFixedAssetLedger } from './odoo-fixed-assets';
 import { loadTreasuryLedger } from './odoo-treasury';
 import { ReportCache } from '../services/report-cache';
@@ -86,6 +87,14 @@ export class OdooConnector {
       const users=await this.call(uid,'res.users','read',[[uid]],{fields:['company_id']}) as Array<{company_id:[number,string]}>;
       const company=users[0]?.company_id;if(!company||!/\bgimi\b/i.test(company[1]))throw new ConnectorError('La source des immobilisations doit être GIMI.','forbidden');
       return loadFixedAssetLedger((model,method,args,kwargs)=>this.call(uid,model,method,args,kwargs),from,through,this.settings.baseUrl!,company[0]);
+    });
+  }
+  async getPartnerRankingSource(from:string,through:string,accountIds:number[]) {
+    return this.reports.get(JSON.stringify(['partner-rankings',from,through,accountIds]),async()=>{
+      const uid=await this.authenticate();
+      const users=await this.call(uid,'res.users','read',[[uid]],{fields:['company_id']}) as Array<{company_id:[number,string]}>;
+      const company=users[0]?.company_id;if(!company||!/\bgimi\b/i.test(company[1]))throw new ConnectorError('La source des classements doit être GIMI.','forbidden');
+      return loadPartnerRankingSource((model,method,args,kwargs)=>this.call(uid,model,method,args,kwargs),from,through,accountIds,company[0],this.settings.baseUrl!);
     });
   }
   async getCashAudit(accountIds: number[], moveIds: number[], through: string) {
