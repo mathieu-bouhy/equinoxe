@@ -1,3 +1,4 @@
+import { MarginOverview } from '../components/MarginOverview';
 import { RatioLegend } from '../components/RatioLegend';
 import { Fragment, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -18,7 +19,7 @@ export function MarginAnalysis({companyId}:{companyId:string}){
   const report=q.data,revenue=report.blocks[0];
   const toggle=(key:string)=>setOpen(previous=>{const next=new Set(previous);next.has(key)?next.delete(key):next.add(key);return next;});
   const rate=(value:number,base:number)=>Math.abs(base)<0.005?'—':percentage.format(value/base);
-  return <Card className="profit-loss margin-analysis">
+  return <><MarginOverview report={report} onDepartment={key=>setOpen(previous=>new Set([...previous,`margin:${key}`]))}/><Card id="margin-analysis-detail" className="profit-loss margin-analysis">
     <div className="profit-loss-heading"><div><p className="eyebrow">Gimi · comptabilité analytique</p><h2>Analyse de marge par département</h2><p>Chiffre d’affaires, marchandises et marge brute selon les clés de répartition enregistrées.</p></div><div className="unit-note">Montants en milliers d’euros, arrondis</div></div>
     <p className="report-note">{report.extrapolatedYear} extrapolé : cumul de janvier au mois {report.lastClosedMonth.slice(5)} × {report.factor.toLocaleString('fr-BE',{maximumFractionDigits:3})}. Les deux années précédentes sont réalisées sur douze mois.</p>
     <RatioLegend basis="du CA total ; pour la marge d’un département, de son propre CA"/><div className="report-table"><table className="margin-matrix">
@@ -38,5 +39,5 @@ export function MarginAnalysis({companyId}:{companyId:string}){
     </table></div>
     <p className="report-note">Marge brute = chiffre d’affaires + marchandises, les charges étant affichées en négatif. « Autres » regroupe les comptes sans clé valide. Le détail affiche la part du compte allouée au département, pas son montant intégral lorsqu’une clé est partagée.</p>
     <p className="report-note">Les clés actuelles s’appliquent aux trois années ; aucune répartition historique n’est reconstituée. Les écritures Odoo sont consultées en lecture seule. Les arrondis peuvent créer un écart apparent dans les sommes affichées.</p>
-  </Card>;
+  </Card></>;
 }
