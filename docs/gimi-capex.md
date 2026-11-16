@@ -1,0 +1,11 @@
+# Investissements GIMI — vue dirigeant
+
+Source principale : grand livre Odoo validé des comptes 21 à 27, dépenses 630 et registre `account.asset`, bornés au dernier mois clôturé. Le registre fournit noms, dates, comptes et état actuel des fiches. Sa valeur actuelle n'est jamais utilisée comme valeur nette d'une clôture historique. Les comptes 28 et 29 sont exclus de la synthèse CAPEX.
+
+Acquisitions identifiées : factures et avoirs fournisseurs capitalisés, ainsi que capitalisations manuelles rapprochées à une fiche de même compte, année et montant (ou au total annuel de fiches pour une capitalisation groupée). Les autres OD positives restent dans « autres mouvements » ; elles ne sont pas automatiquement appelées acquisitions. Les extournes exactes de même exercice, présentes à la clôture considérée et rapprochées par comptes, sont neutralisées. Une facture validée reste incluse si sa fiche d'actif est encore en brouillon ; cette situation est signalée sans modifier Odoo.
+
+Sorties : diminution brute des comptes d'actifs identifiée par pièce de cession ou libellé, sans assimilation au prix de vente. Amortissements : charges 630 validées, ventilées par leurs contreparties d'amortissements cumulés. Les autres variations d'amortissements cumulés sont isolées. Le pont de VNC montre ouverture + acquisitions − sorties brutes − dotations + autres mouvements bruts − autres mouvements d'amortissements.
+
+Les différences entre ouverture, mouvements du grand livre et clôture du bilan sont calculées et restent visibles. Aucun solde de bouclage n'est ajouté. Contrôles historiques : BNB 2024/2025, annexes 6.1 pages 9–10 et bilan page 4, arrondis à l'euro. Les apports de la fusion Dallemagne et reclassements 2024 sont distincts des nouveaux investissements : la présentation des entrées et des valeurs brutes BNB diffère, mais les valeurs nettes concordent à l'arrondi des rubriques BNB.
+
+Les comparaisons N−1 couvrent les mêmes mois. La part amortie correspond à amortissements cumulés / valeur brute ; ce n'est pas un indicateur d'âge ou d'état physique. Le budget CAPEX reste indisponible, sans reprise d'un budget P&L. Les montants de synthèse sont convertis d'euros en kEUR une seule fois ; détails et exports conservent les centimes. Aucune écriture Odoo ni configuration utilisateur n'est modifiée.
