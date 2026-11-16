@@ -52,7 +52,7 @@ export interface EmployeeAnalyticAllocation { id:string; companyId:string; sourc
 export interface BfrLine { id:string; label:string; sign:BfrSign; values:Record<string,number>; variations:Record<string,number|null>; accounts:BalanceAccount[] }
 export interface BfrReport { years:number[]; lines:BfrLine[]; total:Record<string,number>; variation:Record<string,number|null>; generatedAt:string; source:'odoo' }
 export interface CashFlowLine { key:string; label:string; values:Record<string,number>; detail?:string }
-export interface CashFlowReport { through?:string; explanations?:Array<{title:string;text:string;sources?:Array<{label:string;url:string}>}>; years:number[]; lines:CashFlowLine[]; accountDetails?:Record<string,ProfitLossAccount[]>; nonCashDetails?:Record<string,ProfitLossAccount[]>; openingCash?:Record<string,number>; closingCash?:Record<string,number>; generatedAt:string; source:'odoo' }
+export interface CashFlowReport { through?:string; explanations?:Array<{title:string;text:string;sources?:Array<{label:string;url:string}>}>; periods?:Array<{year:number;status:'available'|'incomplete'|'unavailable';closingCashAvailable?:boolean;reason:string}>; distributionLabel?:string; distributionNote?:string; years:number[]; lines:CashFlowLine[]; accountDetails?:Record<string,ProfitLossAccount[]>; nonCashDetails?:Record<string,ProfitLossAccount[]>; openingCash?:Record<string,number>; closingCash?:Record<string,number>; generatedAt:string; source:'odoo'|'history' }
 export type MedipostForecastYear = 2026|2027|2028;
 export type MedipostForecastValues = Record<MedipostForecastYear,number>;
 /** Hypothèses globales du business plan Medipost, partagées par tous les environnements. */
