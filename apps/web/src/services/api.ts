@@ -4,6 +4,8 @@ export class ApiError extends Error { constructor(public status:number,message:s
 async function request<T>(url:string,init?:RequestInit):Promise<T> { let res:Response;try{res=await fetch(url,{credentials:'include',headers:{'content-type':'application/json',...(init?.headers??{})},...init});}catch{throw new ApiError(0,'Le serveur Equinoxe est indisponible.');}let payload:any;try{payload=await res.json();}catch{throw new ApiError(res.status,'Le serveur Equinoxe ne répond pas correctement.');}if(!res.ok)throw new ApiError(res.status,payload.error?.message??'Une erreur est survenue.');return payload.data; }
 const company=(id:string,path:string)=>`/v1/companies/${id}${path}`;
 export const api={
+  treasury:(id:string,view:import('@equinoxe/shared').TreasurySide,mode:'closed'|'today'='closed')=>request<import('@equinoxe/shared').AgedBalanceReport>(company(id,`/treasury?view=${view}&mode=${mode}`)),
+  cashOverview:(id:string)=>request<import('@equinoxe/shared').CashOverviewReport>(company(id,'/treasury?view=synthese')),
   soConsumables:(id:string)=>request<import('@equinoxe/shared').SoConsumablesSnapshot|null>(company(id,'/so-consumables')),
   recalculateSoConsumables:(id:string)=>request<import('@equinoxe/shared').SoConsumablesSnapshot>(company(id,'/so-consumables'),{method:'POST'}),
   accountAllocationAmounts:(id:string)=>request<import('@equinoxe/shared').AccountAllocationAmounts>(company(id,'/account-analytic-amounts')),
