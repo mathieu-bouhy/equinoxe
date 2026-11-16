@@ -1,3 +1,4 @@
+import { loadTreasuryLedger } from './odoo-treasury';
 import { ReportCache } from '../services/report-cache';
 import { config, type OdooConnection } from '../config';
 import { SEPTEMBER_PAYROLL_MOVES, type PayrollCutoffEntry } from '../services/lonneux-payroll-cutoff';
@@ -68,6 +69,16 @@ export class OdooConnector {
     });
   }
   private readonly reports = new ReportCache();
+  private readonly treasuryReports = new ReportCache(300000,2);
+  async getTreasuryLedger(through:string,closedThrough:string) {
+    return this.treasuryReports.get(JSON.stringify(['treasury-ledger',through,closedThrough]),async()=>{
+      const uid=await this.authenticate();
+      const users=await this.call(uid,'res.users','read',[[uid]],{fields:['company_id']}) as Array<{company_id:[number,string]}>;
+      const scope=users[0]?.company_id;
+      if(!scope||!/\bgimi\b/i.test(scope[1]))throw new ConnectorError('Sélectionnez GIMI comme société active du compte de connexion Odoo.','forbidden');
+      return loadTreasuryLedger((model,method,args,kwargs)=>this.call(uid,model,method,args,{...kwargs,context:{...((kwargs?.context??{}) as Record<string,unknown>),allowed_company_ids:[scope[0]]}}),through,closedThrough,this.settings.baseUrl!,scope[0]);
+    });
+  }
   async getCashAudit(accountIds: number[], moveIds: number[], through: string) {
     const uid = await this.authenticate();
     return loadCashAudit((model, method, args, kwargs) => this.call(uid, model, method, args, kwargs), accountIds, moveIds, through);

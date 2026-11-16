@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { treasuryResponse } from './treasury';
 import { reportingDashboards } from '../services/dashboard-definitions';
 import { applyLonneuxPayrollCutoff } from '../services/lonneux-payroll-cutoff';
 import { userResponse, companyIdsFor } from './users';
@@ -45,6 +46,13 @@ export function createApp(store=new Store(config.dataDir,config.databaseUrl),aut
  if(analyticProfitMatch){const company=await companyFor(user,analyticProfitMatch[1]);if(!company)return secured(fail('FORBIDDEN','Accès à cette société refusé.',403));return secured(await analyticProfitLossResponse(request,company,store,odooFor(company),Boolean(analyticProfitMatch[2])));}
  const soConsumablesMatch=path.match(/^\/v1\/companies\/([^/]+)\/so-consumables$/);
  if(soConsumablesMatch){const company=await companyFor(user,soConsumablesMatch[1]);if(!company)return secured(fail('FORBIDDEN','Accès refusé.',403));return secured(await soConsumablesResponse(request,company,user.role==='admin',store,soConsumables,odooFor(company)));}
+ const treasuryMatch=path.match(/^\/v1\/companies\/([^/]+)\/treasury$/);
+ if(treasuryMatch){
+   const company=await companyFor(user,treasuryMatch[1]);
+   if(!company)return secured(fail('FORBIDDEN','Accès à cette société refusé.',403));
+   const [settings,bfrSections,pnlSections]=await Promise.all([store.reportSettings.read(),store.bfrSections.read(),store.pnlSections.read()]);
+   return secured(await treasuryResponse(request,company,odooFor(company),settings.find(s=>s.companyId===company.id),bfrSections.filter(s=>s.companyId===company.id),pnlSections.filter(s=>s.companyId===company.id)));
+ }
  const cashHistoryMatch=path.match(/^\/v1\/companies\/([^/]+)\/cash-history(\/export)?$/);
  if(cashHistoryMatch){
    const company=await companyFor(user,cashHistoryMatch[1]);

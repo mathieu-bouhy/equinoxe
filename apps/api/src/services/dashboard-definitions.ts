@@ -11,5 +11,8 @@ export function reportingDashboards(company: Company, definitions: DashboardDefi
     const anchor = balance >= 0 ? balance : bilan;
     rows.splice(anchor < 0 ? rows.length : anchor+1,0,{id:`${company.id}-analyse`,companyId:company.id,slug:'analyse',label:'Reporting mensuel',order:rows.length+1,status:'active'});
   }
+  if(company.slug==='gimi')for(const [slug,label] of [['tresorerie-clients','Trésorerie clients'],['tresorerie-fournisseurs','Trésorerie fournisseurs'],['synthese-cash','Synthèse cash']]){
+    if(!rows.some(row=>row.slug===slug))rows.push({id:`${company.id}-${slug}`,companyId:company.id,slug,label,order:rows.length+1,status:'active'});
+  }
   return rows;
 }
