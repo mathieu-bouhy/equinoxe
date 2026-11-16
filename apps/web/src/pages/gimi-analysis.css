@@ -9,3 +9,5 @@
 /* Realised / prior / budget convention applies to financial series, not signed variances. */
 .report-actual,.ga-table tbody tr>:nth-child(3){color:#111111}.report-prior,.ga-table tbody tr>:nth-child(2){color:#7030a0}.ga-table .ga-budget,.ga-table tbody tr>:nth-child(6){color:#2563eb}.ga-kpi-budget{color:#2563eb}.ga-kpi-budget.ga-prior{color:#7030a0}
 .ga-kpi>strong{color:#111111}
+
+.ga-payroll-kpis small.report-prior{color:#7030a0}
