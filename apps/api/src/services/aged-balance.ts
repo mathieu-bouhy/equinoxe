@@ -1,3 +1,4 @@
+import { lateClientFollowup } from './late-clients';
 import type { AgedBalanceReport, AgedInvoice, AgingBucket, AgingTotals, TreasurySide } from '@equinoxe/shared';
 
 export interface TreasuryLedger {
@@ -24,7 +25,7 @@ export function agingBucket(asOf:string,due:string|null):{bucket:AgingBucket;day
 const emptyTotals=():AgingTotals=>({notDue:0,days30:0,days60:0,days90:0,over90:0,noDueDate:0,invoices:0,overdue:0,other:0,doubtful:0,ledger:0});
 
 /** Rebuild a dated residual, never reuse today's residual for an earlier month. */
-export function buildAgedBalance(ledger:TreasuryLedger,side:TreasurySide,asOf:string,closedThrough:string):AgedBalanceReport {
+export function buildAgedBalance(ledger:TreasuryLedger,side:TreasurySide,asOf:string,closedThrough:string,historyFrom?:string):AgedBalanceReport {
   if(!validTreasuryDate(asOf)||asOf>ledger.through||!validTreasuryDate(closedThrough))throw new Error('Date hors du périmètre importé.');
   const accounts=new Map(ledger.accounts.filter(a=>a.side===side).map(a=>[a.id,a]));
   const moves=new Map(ledger.moves.map(move=>[move.id,move]));
@@ -60,7 +61,7 @@ export function buildAgedBalance(ledger:TreasuryLedger,side:TreasurySide,asOf:st
     return {totals,rows,control,difference:totals.ledger-control};
   };
   const current=snapshot(asOf,true);
-  const history=treasuryMonthEnds(closedThrough).map(date=>{const item=snapshot(date,false);return {date,...item.totals,control:item.control,difference:item.difference};});
+  const history=treasuryMonthEnds(closedThrough).filter(date=>!historyFrom||date>=historyFrom).map(date=>{const item=snapshot(date,false);return {date,...item.totals,control:item.control,difference:item.difference};});
   const upcoming=Array.from({length:4},(_,i)=>({startDay:i*7+1,endDay:(i+1)*7,amount:0}));
   for(const row of current.rows)if((row.kind==='invoice'||row.kind==='credit')&&row.dueDate){
     const days=Math.round((Date.parse(row.dueDate)-Date.parse(asOf))/86400000);
@@ -71,5 +72,5 @@ export function buildAgedBalance(ledger:TreasuryLedger,side:TreasurySide,asOf:st
   if(current.rows.some(row=>row.dueDate===null&&['invoice','credit'].includes(row.kind)))warnings.push('Certaines factures n’ont pas de date d’échéance : elles restent dans « Sans échéance ».');
   if(Math.abs(current.difference)>.01||history.some(row=>Math.abs(row.difference)>.01))warnings.push('Écart avec la balance comptable : consultez le rapprochement avant d’utiliser les montants.');
   if(Math.abs(current.totals.other)>.005)warnings.push('Les autres écritures et paiements non lettrés sont isolés ; ils ne sont pas imputés arbitrairement aux factures.');
-  return {side,asOf,closedThrough,readAt:ledger.readAt,currency:'EUR',...current,history,accounts:[...accounts.values()].map(a=>({code:a.code,label:a.name,balance:(ledger.controls.find(c=>c.date===asOf&&c.accountId===a.id)!.balance)*sign})),upcoming,warnings};
+  return {side,asOf,closedThrough,readAt:ledger.readAt,currency:'EUR',...current,history,accounts:[...accounts.values()].map(a=>({code:a.code,label:a.name,balance:(ledger.controls.find(c=>c.date===asOf&&c.accountId===a.id)!.balance)*sign})),upcoming,lateClients:side==='clients'?lateClientFollowup(current.rows):undefined,warnings};
 }

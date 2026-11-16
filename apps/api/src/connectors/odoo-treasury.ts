@@ -12,7 +12,7 @@ export async function loadTreasuryLedger(read:Reader,through:string,closedThroug
   const raw=await read('account.account','search_read',[[[companyField,'in',[companyId]],['account_type','in',['asset_receivable','liability_payable']]]],{fields:['code','name','account_type'],order:'id asc',context:{active_test:false}}) as Array<{id:number;code:string;name:string;account_type:string}>;
   if(!raw.length||raw.length>1000)throw new Error('Comptes clients/fournisseurs absents ou incohérents.');
   const invalid=raw.filter(a=>typeof a.code!=='string'||!/^\d+$/.test(a.code));
-  if(invalid.length){const count=await read('account.move.line','search_count',[[['account_id','in',invalid.map(a=>a.id)],['parent_state','=','posted'],['date','<=',through]]]);if(count!==0)throw new Error('Des écritures GIMI utilisent un compte sans numéro valide.');}
+  if(invalid.length){const count=await read('account.move.line','search_count',[[['account_id','in',invalid.map(a=>a.id)],['parent_state','=','posted'],['date','<=',through]]]);if(count!==0)throw new Error('Des écritures de la société sélectionnée utilisent un compte sans numéro valide.');}
   const accounts:TreasuryLedger['accounts']=raw.filter(a=>!invalid.includes(a)&&(a.account_type==='asset_receivable'?a.code.startsWith('40'):a.code.startsWith('44'))).map(a=>({id:a.id,code:a.code,name:a.name,side:a.account_type==='asset_receivable'?'clients':'fournisseurs'}));
   const ids=accounts.map(a=>a.id),earliest=treasuryMonthEnds(closedThrough)[0];
   if(!ids.length)throw new Error('Comptes commerciaux clients/fournisseurs absents.');

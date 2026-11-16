@@ -5,7 +5,7 @@
 }
 
 .report-matrix thead .budget-header {
-  border-left: 3px solid #b7553b;
+  border-left: 3px solid #2563eb;
   background: #fff;
 }
 
@@ -14,9 +14,9 @@
 }
 
 .report-matrix td.budget-cell {
-  border-left: 3px solid #b7553b;
+  border-left: 3px solid #2563eb;
   background: #fff;
-  color: #163c34;
+  color: #2563eb;
   font-weight: 700;
 }
 

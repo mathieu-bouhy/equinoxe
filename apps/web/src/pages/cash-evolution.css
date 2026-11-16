@@ -12,7 +12,7 @@
 .cash-chart { min-width: 1050px; }
 .cash-chart-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #53675f; font-size: 12px; margin-bottom: 10px; }
 .cash-chart-legend small { margin-left: auto; }
-.cash-average-key { width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 1px solid #163c34; }
+.cash-average-key { width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 1px solid #111111; }
 .cash-range-key { width: 10px; height: 16px; border-block: 2px solid #81968c; background: linear-gradient(90deg,transparent 4px,#81968c 4px,#81968c 6px,transparent 6px); margin-left: 12px; }
 .cash-chart-tooltip { display: grid; gap: 7px; padding: 16px; background: #fff; border: 1px solid #e0e7e3; border-radius: 10px; color: #163c34; box-shadow: 0 4px 20px #3b1f121a; font-size: 13px; }
 .cash-warning { padding: 14px; background: #fff; border-radius: 8px; color: #163c34; }

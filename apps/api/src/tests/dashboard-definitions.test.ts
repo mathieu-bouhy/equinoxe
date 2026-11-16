@@ -11,11 +11,11 @@ test('ajoute le reporting Lonneux après Balance, même quand Bilan est aussi pr
   {id:'3',companyId:'l',slug:'autre',label:'Autre',order:12,status:'active'},
  ];
  const result=reportingDashboards({id:'l',slug:'lonneux'} as Company,lonneuxRows);
- expect(result.map(row=>row.slug)).toEqual(['bilan','balance','analyse','autre']);
+ expect(result.map(row=>row.slug)).toEqual(['bilan','balance','analyse','autre','tresorerie-clients','tresorerie-fournisseurs','synthese-cash']);
  expect(result.find(row=>row.slug==='analyse')?.label).toBe('Reporting mensuel');
 });
 test('utilise Bilan comme repli quand Balance est absent',()=>{
  const lonneuxRows:DashboardDefinition[]=[{id:'1',companyId:'l',slug:'bilan',label:'Bilan',order:10,status:'active'}];
- expect(reportingDashboards({id:'l',slug:'lonneux'} as Company,lonneuxRows).map(row=>row.slug)).toEqual(['bilan','analyse']);
+ expect(reportingDashboards({id:'l',slug:'lonneux'} as Company,lonneuxRows).map(row=>row.slug)).toEqual(['bilan','analyse','tresorerie-clients','tresorerie-fournisseurs','synthese-cash']);
 });
 test('aucun ajout aux sociétés non concernées',()=>{expect(reportingDashboards({...company,slug:'eurodrill'},rows)).toHaveLength(2);});

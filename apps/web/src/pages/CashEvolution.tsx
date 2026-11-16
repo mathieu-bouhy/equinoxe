@@ -1,3 +1,4 @@
+import { reportColors } from '../services/report-colors';
 import { Fragment, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CartesianGrid, ComposedChart, ErrorBar, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine } from 'recharts';
@@ -46,7 +47,10 @@ export function CashEvolution({ companyId, editable, companyName = 'Gimi', compa
       {sync.isSuccess && !sync.isPending && <p role="status">Historique actualisé et enregistré dans PostgreSQL.</p>}
       {!report && !query.error && <p>Aucun historique enregistré. {editable ? 'L’import lit uniquement les écritures validées Odoo et enregistre une copie dans PostgreSQL.' : 'Un administrateur doit importer l’historique.'}</p>}
       {report && <>
-        {report.needsSync && <p className="cash-warning" role="status">Historique disponible jusqu’au {dayLabel(report.through)} seulement. Actualisez l’import pour couvrir le mois sélectionné ; les mois manquants ne sont pas affichés à zéro.</p>}
+        {report.through<report.requestedThrough && <p className="cash-warning" role="status">Historique disponible jusqu’au {dayLabel(report.through)} seulement. Actualisez l’import pour couvrir le mois sélectionné ; les mois manquants ne sont pas affichés à zéro.</p>}
+        {report.liveCheck?.status==='different'&&<p className="cash-warning" role="status">Historique enregistré non actualisé : clôture {amount(report.closing)} k€ contre {amount(report.liveCheck.closing!)} k€ dans Odoo au même {dayLabel(report.liveCheck.asOf)}. Écart : {amount(report.liveCheck.difference!)} k€. Actualisez l’import ; la copie date du {new Date(report.importedAt).toLocaleString('fr-BE')}.</p>}
+        {report.liveCheck?.status==='unavailable'&&<p className="cash-warning">Le contrôle avec le solde Odoo actuel est indisponible. Les montants affichés proviennent de l’import du {new Date(report.importedAt).toLocaleString('fr-BE')}.</p>}
+        {report.liveCheck?.status==='matched'&&<p className="report-note">Clôture rapprochée du bilan Odoo au {dayLabel(report.liveCheck.asOf)} : {amount(report.liveCheck.closing!)} k€. Contrôle du {new Date(report.liveCheck.checkedAt).toLocaleString('fr-BE')}. La moyenne du graphique reste distincte du solde de fin de mois.</p>}
         {companySlug==='eurodrill'&&<p className="cash-warning">Les soldes 2024–2025 reflètent un historique Odoo partiel et des écritures d’annulation/reprise. Le rapprochement confirme le calcul avec Odoo, pas l’exhaustivité des mouvements bancaires.</p>}<div className="cash-evolution-summary">
           <div><span>Ouverture · 31 décembre 2023</span><strong>{amount(report.opening)}</strong></div>
           <div><span>Clôture · {dayLabel(report.through)}</span><strong>{amount(report.closing)}</strong></div>
@@ -58,7 +62,7 @@ export function CashEvolution({ companyId, editable, companyName = 'Gimi', compa
             <CartesianGrid stroke="#e0e7e3" vertical={false}/><XAxis dataKey="month" tickFormatter={label} angle={-45} textAnchor="end" height={64} interval={0} tick={{ fontSize: 11 }} tickMargin={12}/>
             <YAxis tickFormatter={value => new Intl.NumberFormat('fr-BE').format(Number(value))} width={65} domain={['auto', 'auto']} tick={{ fontSize: 12 }}/>
             <Tooltip content={<CashTooltip/>}/><ReferenceLine y={0} stroke="#81968c"/>
-            <Line type="linear" dataKey="meanK" name="Moyenne" stroke="var(--brand-deep)" strokeWidth={2} dot={{ r: 4, fill: 'var(--brand-accent)', stroke: 'var(--brand-deep)' }} isAnimationActive={false}>
+            <Line type="linear" dataKey="meanK" name="Moyenne" stroke={reportColors.actual} strokeWidth={2} dot={{ r: 4, fill: reportColors.actual, stroke: reportColors.actual }} isAnimationActive={false}>
               <ErrorBar dataKey="range" width={9} strokeWidth={2} stroke="#81968c" direction="y"/>
             </Line>
           </ComposedChart></ResponsiveContainer>

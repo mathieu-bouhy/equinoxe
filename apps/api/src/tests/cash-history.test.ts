@@ -123,3 +123,11 @@ test('détail par compte : sommes rapprochées, soldes reportés et comptes nuls
   expect(report.months[1].accounts[1].average).toBe(-80.1);
   expect(report.months[0].accounts[2]).toMatchObject({opening:0,average:0,closing:0});
 });
+import { cashHistoryResponse } from '../http/cash-history';
+test('freshness: detects stale closing at the same date without replacing saved data; unavailable Odoo is explicit',async()=>{
+ const snapshot=fixture(),before=JSON.stringify(snapshot),company={id:'gimi',slug:'gimi',connectorType:'odoo'} as any;
+ const options={request:new Request('https://test/cash-history'),company,isAdmin:false,setting:{companyId:'gimi',lastClosedMonth:'2026-07',updatedAt:''},repository:{read:async()=>snapshot,save:async()=>{throw Error('GET must not save');}},exportCsv:false};
+ const connector={getBalance:async()=>({assets:[{key:'cash',values:{2026:210}}]})} as unknown as OdooConnector;
+ const data=(await (await cashHistoryResponse({...options,connector})).json()).data;expect(data.closing).toBe(110);expect(data.liveCheck).toMatchObject({status:'different',closing:210,difference:100,asOf:'2026-07-31'});expect(data.needsSync).toBe(true);expect(JSON.stringify(snapshot)).toBe(before);
+ const failed={getBalance:async()=>{throw Error('unavailable');}} as unknown as OdooConnector;expect((await (await cashHistoryResponse({...options,connector:failed})).json()).data.liveCheck.status).toBe('unavailable');
+});

@@ -24,3 +24,10 @@ test('lecture bornée et paginée, société explicite, archives et lettrages po
  expect((calls.find(c=>c.model==='account.account'&&c.method==='search_read')!.kwargs?.context as any).active_test).toBe(false);
  expect(calls.filter(c=>c.model==='account.move.line'&&c.method==='read_group')).toHaveLength(14);
 });
+import { OdooConnector } from '../connectors/odoo';
+test('le connecteur refuse une société active différente et ne confond pas les caches Gimi/Lonneux',async()=>{
+ let reads=0;
+ const fetcher=(async(_url:unknown,init:RequestInit)=>{const params=JSON.parse(init.body as string).params;if(params.service==='common')return Response.json({result:1});const model=params.args[3];if(model==='res.users'){reads++;return Response.json({result:[{company_id:[8,'GIMI']}]});}throw Error('No ledger read expected');}) as typeof fetch;
+ const connector=new OdooConnector({baseUrl:'https://odoo.example',database:'fixture',username:'fixture',apiKey:'fixture',timeoutMs:1000,retries:0},fetcher);
+ await expect(connector.getTreasuryLedger('2026-11-16','2026-09-30','lonneux')).rejects.toThrow('LONNEUX');expect(reads).toBe(1);
+});
