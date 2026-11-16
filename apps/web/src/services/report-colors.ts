@@ -1,5 +1,5 @@
 /** Shared financial convention: series identity, independently of favourable/unfavourable deltas. */
-export const reportColors={actual:'#111111',budget:'#2563eb',prior:'#16804a',neutral:'#7c8790',alert:'#b13e4e'} as const;
+export const reportColors={actual:'#111111',budget:'#2563eb',prior:'#7030a0',neutral:'#7c8790',alert:'#b13e4e'} as const;
 export type MonthlyPerformanceRow={name:string;caActual:number|null;caPrior:number|null;caBudget:number|null;grossActual:number|null;grossPrior:number|null;grossBudget:number|null};
 export function monthlyPerformanceRows(year:number,month:number,mode:'ytd'|'ltm',read:(key:string,label:string)=>number|undefined,annualBudget:Readonly<Record<string,number|undefined>>,label:(month:string)=>string):MonthlyPerformanceRow[]{
  return Array.from({length:mode==='ytd'?month:12},(_,i)=>{
