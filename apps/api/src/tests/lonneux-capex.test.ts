@@ -12,8 +12,8 @@ import {OdooConnector} from '../connectors/odoo';
 const companyId='lonneux';
 const row=(year:number,accountCode:string,amount:number,label:string):HistoricalAccountBalance=>({companyId,year,accountCode,amount,label:`${accountCode} ${label}`,sourceFile:'LONNEUXM - Analyses financières.xlsx',importedAt:''});
 const fixture=()=>[
- row(2024,'221000',1000,'Bâtiment : acquisition'),row(2024,'221900',-400,'Bâtiment : amortissements'),row(2024,'630200',100,'Dotations corporelles'),row(2024,'288300',50,'Caution'),
- row(2025,'221000',1100,'Bâtiment : acquisition'),row(2025,'221900',-450,'Bâtiment : amortissements'),row(2025,'630200',80,'Dotations corporelles'),row(2025,'288300',50,'Caution'),
+ row(2024,'221000',1000,'Bâtiment : acquisition'),row(2024,'221900',-400,'Frais aménagement sans mention amortissement'),row(2024,'630200',100,'Dotations corporelles'),row(2024,'288300',50,'Caution'),
+ row(2025,'221000',1100,'Bâtiment : acquisition'),row(2025,'221900',-450,'Frais aménagement sans mention amortissement'),row(2025,'630200',80,'Dotations corporelles'),row(2025,'288300',50,'Caution'),
 ];
 
 test('Lonneux 2025 : la VNC se rapproche sans appeler une variation brute acquisition',()=>{
