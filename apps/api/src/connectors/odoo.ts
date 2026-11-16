@@ -1,3 +1,4 @@
+import { loadFixedAssetLedger } from './odoo-fixed-assets';
 import { loadTreasuryLedger } from './odoo-treasury';
 import { ReportCache } from '../services/report-cache';
 import { config, type OdooConnection } from '../config';
@@ -77,6 +78,14 @@ export class OdooConnector {
       const scope=users[0]?.company_id;
       if(!['gimi','lonneux'].includes(companySlug)||!scope||!new RegExp(`\\b${companySlug}\\b`,'i').test(scope[1]))throw new ConnectorError(`Sélectionnez ${companySlug.toUpperCase()} comme société active du compte de connexion Odoo.`,'forbidden');
       return loadTreasuryLedger((model,method,args,kwargs)=>this.call(uid,model,method,args,{...kwargs,context:{...((kwargs?.context??{}) as Record<string,unknown>),allowed_company_ids:[scope[0]]}}),through,closedThrough,this.settings.baseUrl!,scope[0]);
+    });
+  }
+  async getFixedAssetLedger(from:string,through:string) {
+    return this.reports.get(JSON.stringify(['fixed-assets',from,through]),async()=>{
+      const uid=await this.authenticate();
+      const users=await this.call(uid,'res.users','read',[[uid]],{fields:['company_id']}) as Array<{company_id:[number,string]}>;
+      const company=users[0]?.company_id;if(!company||!/\bgimi\b/i.test(company[1]))throw new ConnectorError('La source des immobilisations doit être GIMI.','forbidden');
+      return loadFixedAssetLedger((model,method,args,kwargs)=>this.call(uid,model,method,args,kwargs),from,through,this.settings.baseUrl!,company[0]);
     });
   }
   async getCashAudit(accountIds: number[], moveIds: number[], through: string) {

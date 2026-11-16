@@ -107,3 +107,5 @@ export * from './so-consumables';
 export * from './aged-balance';
 export * from './sourced-dossier';
 export * from './cash-overview';
+
+export * from './capex';
