@@ -109,3 +109,4 @@ export * from './sourced-dossier';
 export * from './cash-overview';
 
 export * from './capex';
+export * from './lonneux-capex';
