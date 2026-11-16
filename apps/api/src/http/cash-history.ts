@@ -33,6 +33,14 @@ export async function cashHistoryResponse(options: {
       'content-disposition': `attachment; filename="${company.slug}-tresorerie-2024-01-${report.through.slice(0,7)}.csv"`,
       'cache-control': 'no-store',
     } });
+    try {
+      const year=Number(report.through.slice(0,4)),balance=await connector.getBalance([year],report.through);
+      const closing=balance.assets.find(line=>line.key==='cash')?.values[String(year)];
+      if(closing===undefined||!Number.isFinite(closing))throw new Error('Solde absent');
+      const difference=Math.round((closing-report.closing)*100)/100;
+      report.liveCheck={status:Math.abs(difference)>.01?'different':'matched',asOf:report.through,checkedAt:new Date().toISOString(),closing,difference};
+      if(Math.abs(difference)>.01)report.needsSync=true;
+    }catch {report.liveCheck={status:'unavailable',asOf:report.through,checkedAt:new Date().toISOString()};}
     return Response.json({ data: report }, { headers: { 'cache-control': 'no-store' } });
   } catch (error) {
     return fail(error instanceof ConnectorError ? error.message : 'Impossible de lire ou enregistrer l’historique PostgreSQL. Les données précédentes sont conservées.', 503);

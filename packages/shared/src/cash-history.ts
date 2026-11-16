@@ -21,5 +21,6 @@ export type CashMonth = {
 export type CashEvolutionReport = {
   companyId: string; from: string; through: string; requestedThrough: string;
   importedAt: string; needsSync: boolean; opening: number; closing: number;
+  liveCheck?:{status:'matched'|'different'|'unavailable';asOf:string;checkedAt:string;closing?:number;difference?:number};
   movementCount: number; accounts: CashAccount[]; days: CashDay[]; months: CashMonth[];
 };

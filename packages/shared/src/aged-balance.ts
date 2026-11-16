@@ -16,5 +16,6 @@ export interface AgedBalanceReport {
   totals:AgingTotals; control:number; difference:number; rows:AgedInvoice[]; history:AgingMonth[];
   accounts:Array<{code:string;label:string;balance:number}>;
   upcoming:Array<{startDay:number;endDay:number;amount:number}>;
+  lateClients?:Array<{partnerId:number|null;partner:string;over90:number;days61to90:number;over60:number;oldestDueDate:string|null;invoiceCount:number}>;
   warnings:string[];
 }

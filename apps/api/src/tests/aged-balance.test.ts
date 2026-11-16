@@ -21,7 +21,7 @@ test('route refuse mutation, société différente et paramètres libres avant t
  const company={id:'g',slug:'gimi',connectorType:'odoo'} as Company,setting={companyId:'g',lastClosedMonth:'2026-10'} as ReportSettings;
  const connector={getTreasuryLedger:()=>{throw new Error('should not call');}} as unknown as OdooConnector;
  for(const [method,view,status] of [['POST','clients',405],['GET','arbitrary-model',422]] as const){expect((await treasuryResponse(new Request(`https://test/treasury?view=${view}`,{method}),company,connector,setting)).status).toBe(status);}
- expect((await treasuryResponse(new Request('https://test/treasury'),{...company,slug:'lonneux'},connector,setting)).status).toBe(409);
+ expect((await treasuryResponse(new Request('https://test/treasury'),{...company,slug:'eurodrill'},connector,setting)).status).toBe(409);
 });
 import { mkdtemp,rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -59,4 +59,12 @@ test('échéancier contractuel : bornes hebdomadaires, avoir signé et exclusion
  expect(report.upcoming.map(w=>w.amount)).toEqual([70,0,0,0]);
  ledger.lines[0].dueDate='2026-11-08';expect(buildAgedBalance(ledger,'clients','2026-10-31','2026-10-31').upcoming.map(w=>w.amount)).toEqual([0,70,0,0]);
  ledger.lines[0].dueDate='2026-10-31';expect(buildAgedBalance(ledger,'clients','2026-10-31','2026-10-31').upcoming.every(w=>w.amount===0)).toBe(true);
+});
+test('Lonneux : neuf mois réels, aucun faux historique 2025, instance attendue transmise au connecteur',async()=>{
+ const company={id:'l',slug:'lonneux',connectorType:'odoo'} as Company,setting={companyId:'l',lastClosedMonth:'2026-09'} as ReportSettings;
+ let receivedSlug:string|undefined;
+ const connector={getTreasuryLedger:async(_through:string,_closed:string,slug:string)=>{receivedSlug=slug;return fixture();}} as unknown as OdooConnector;
+ const response=await treasuryResponse(new Request('https://test/treasury?view=clients'),company,connector,setting);
+ expect(response.status).toBe(200);const report=(await response.json()).data;
+ expect(receivedSlug).toBe('lonneux');expect(report.history).toHaveLength(9);expect(report.history[0].date).toBe('2026-01-31');expect(report.history[8].date).toBe('2026-09-30');expect(report.warnings.join(' ')).toContain('reprise des soldes');
 });
