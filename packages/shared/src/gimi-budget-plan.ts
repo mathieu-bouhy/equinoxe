@@ -102,6 +102,33 @@ export type GimiBudgetProjectionLineKind='amount'|'percentage';
 export interface GimiBudgetProjectionLine { key:string; label:string; kind:GimiBudgetProjectionLineKind; emphasis?:'subtotal'|'total'|'result'; values:Record<string,number> }
 export interface GimiBudgetProjection { scenario:GimiBudgetScenarioName; baseDate:string; source:'interimAnnualized'|'budget2026Reference'; sourceNote:string; years:number[]; lines:GimiBudgetProjectionLine[]; generatedAt:string }
 
+export interface GimiBudgetProjectionIntegrity { ok:boolean; checkedYears:number[]; failures:string[] }
+
+export function gimiBudgetProjectionIntegrity(projection:GimiBudgetProjection):GimiBudgetProjectionIntegrity{
+  const values=new Map(projection.lines.map(line=>[line.key,line.values])),failures:string[]=[];
+  const required=['revenue','purchases','merchandise','subcontracting','grossMargin','grossMarginRate','services','building','payroll','operatingNet','ebitda','ebitdaRate','depreciation','operatingResult','financial','preTax','tax','netResult','operatingCashFlow'];
+  for(const key of required)if(!values.has(key))failures.push(`Rubrique manquante : ${key}`);
+  const close=(actual:number|undefined,expected:number,label:string,year:number)=>{
+    const tolerance=Math.max(1,Math.abs(expected)*1e-9);
+    if(actual===undefined||!Number.isFinite(actual)||Math.abs(actual-expected)>tolerance)failures.push(`${label} ${year}`);
+  };
+  if(failures.length)return {ok:false,checkedYears:projection.years,failures};
+  for(const year of projection.years){
+    const key=String(year),get=(line:string)=>values.get(line)![key];
+    const revenue=get('revenue'),purchases=get('purchases'),merchandise=get('merchandise'),subcontracting=get('subcontracting'),grossMargin=get('grossMargin'),services=get('services'),building=get('building'),payroll=get('payroll'),operatingNet=get('operatingNet'),ebitda=get('ebitda'),depreciation=get('depreciation'),operatingResult=get('operatingResult'),financial=get('financial'),preTax=get('preTax'),tax=get('tax'),netResult=get('netResult');
+    close(purchases,merchandise+subcontracting,'Achats',year);
+    close(grossMargin,revenue+purchases,'Marge brute',year);
+    close(get('grossMarginRate'),revenue===0?0:grossMargin/revenue,'Taux de marge brute',year);
+    close(ebitda,grossMargin+services+building+payroll+operatingNet,'EBITDA',year);
+    close(get('ebitdaRate'),revenue===0?0:ebitda/revenue,'Taux EBITDA',year);
+    close(operatingResult,ebitda+depreciation,'Résultat d’exploitation',year);
+    close(preTax,operatingResult+financial,'Résultat avant impôts',year);
+    close(netResult,preTax+tax,'Résultat net',year);
+    close(get('operatingCashFlow'),netResult-depreciation,'Cash-flow opérationnel',year);
+  }
+  return {ok:failures.length===0,checkedYears:projection.years,failures};
+}
+
 export interface GimiBudgetCashForecastYear {
   year:GimiBudgetYear;
   netResult:number;

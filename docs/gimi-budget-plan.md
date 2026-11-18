@@ -2,7 +2,7 @@
 
 ## Périmètre de la première version
 
-Le budget constitue un espace distinct du reporting financier. La première sous-section couvre 2027 à 2036, avec 2027 comme année de travail prioritaire. Elle contient sept écrans : résultats, KPI et hypothèses utiles, scénarios, rémunérations, CAPEX, dette et cash forecast, puis bâtiment et flux internes.
+Le budget constitue un espace distinct du reporting financier. La première sous-section couvre 2027 à 2036, avec 2027 comme année de travail prioritaire. Elle contient huit écrans : résultats, KPI et hypothèses utiles, scénarios, rémunérations, CAPEX, dette et cash forecast, bâtiment et flux internes, puis contrôles et sources.
 
 Les hypothèses sont persistées par société dans PostgreSQL et protégées par un numéro de révision. Un utilisateur autorisé à Gimi peut les consulter ; seule l'Administration peut les modifier. La page Résultats présente un premier compte de résultat prévisionnel agrégé de 2026 à 2036.
 
@@ -48,6 +48,14 @@ Le coût budgété applique l'indexation annuelle puis un prorata journalier ent
 - Le cash-flow libre complet ajoute l'impact de la variation du BFR, puis déduit les CAPEX et les remboursements de capital CBC et MBP. Une hausse du BFR consomme de la trésorerie.
 - La trésorerie de clôture est calculée à partir d'une trésorerie d'ouverture au 1er janvier 2027 saisie explicitement. Le solde Odoo au dernier mois clôturé est affiché comme repère, mais il n'est pas assimilé automatiquement au solde du 1er janvier.
 - Un élément manquant — BFR, CAPEX, dette ou trésorerie d'ouverture — reste affiché comme indisponible. Il n'est pas remplacé par zéro.
+
+## Contrôles et sources
+
+- L'onglet distingue un contrôle automatique réussi, une hypothèse à confirmer et une source indisponible. Un contrôle arithmétique réussi ne constitue jamais une validation métier.
+- La projection est recalculée ligne par ligne pour vérifier les égalités achats, marge brute, EBITDA, résultat d'exploitation, résultat avant impôts, résultat net et cash-flow opérationnel sur toutes les années affichées.
+- La checklist vérifie aussi la complétude du BFR, du CAPEX, des échéanciers de dette, de la trésorerie d'ouverture, des indexations salariales et des validations d'hypothèses.
+- Le registre de provenance documente pour chaque famille la source, la période et la transformation appliquée. Une source absente reste indisponible ; elle ne devient pas un zéro.
+- La base Odoo annualisée est distinguée de la référence provisoire du fichier Budget 2026. Les données confidentielles restent signalées comme calculées côté API sans exposer leur détail.
 
 ## Contrôles attendus avant le compte de résultat prévisionnel
 

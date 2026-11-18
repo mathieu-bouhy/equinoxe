@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { Store } from '../repositories/store';
 import { AuthService } from '../auth/service';
 import { createApp } from '../http/app';
+import { gimiBudgetProjectionIntegrity } from '@equinoxe/shared';
 
 const dirs:string[]=[];
 afterEach(async()=>{await Promise.all(dirs.splice(0).map(dir=>rm(dir,{recursive:true,force:true})))});
@@ -24,6 +25,9 @@ test('budget Gimi persistant, validé et protégé contre les écrasements concu
   expect(projectionResponse.status).toBe(200);expect(projection.years).toEqual([2026,2027,2028,2029,2030,2031,2032,2033,2034,2035,2036]);
   expect(projection.source).toBe('budget2026Reference');expect(projection.sourceNote).toContain('provisoirement');
   expect(projection.lines.find((line:{key:string})=>line.key==='revenue').values['2027']).toBeCloseTo(8_012_000*1.12,2);
+  expect(gimiBudgetProjectionIntegrity(projection).ok).toBe(true);
+  const altered=structuredClone(projection),alteredGross=altered.lines.find((line:{key:string})=>line.key==='grossMargin');alteredGross.values['2027']+=1000;
+  expect(gimiBudgetProjectionIntegrity(altered).ok).toBe(false);
   expect(JSON.stringify(projection)).not.toContain('dirigeant');expect(JSON.stringify(projection)).not.toContain('compensation');
   const {companyId:_,updatedAt:__,updatedByUserId:___,...input}=plan,inputChanged={...input,validation:{...input.validation,interimBase:true},decisions:{...input.decisions,seasonality:true},capexBudget:{...input.capexBudget,vehicles:{...input.capexBudget.vehicles,2027:100000}},debtForecast:{...input.debtForecast,openingCash2027:900000}};
   const saved=await call(`/v1/companies/${gimi.id}/budget-plan`,'PUT',inputChanged,cookie),savedPlan=(await saved.json()).data;
