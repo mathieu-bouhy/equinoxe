@@ -21,8 +21,9 @@ import { withCostAllocationKeys, salaryKeyId, vehicleKeyId, sortEmployees, isMon
 import { employeeAssignmentsSchema, saveEmployeeAssignments, EmployeeAssignmentError } from '../services/employee-assignments';
 import { loadBalanceSheet } from '../services/balance-sheet';
 import { buildMarginAnalysis } from '../services/margin-analysis';
+import { buildGimiBudgetProjection, gimiBudgetBaselineFromProfitLoss } from '../services/gimi-budget-projection';
 import { accountSection, sortAccountAllocations } from '../services/analytic-allocation';
-import { z } from 'zod'; import { config, production } from '../config'; import { Store, medipostBusinessPlanAssumptions } from '../repositories/store'; import { AuthService } from '../auth/service'; import { parseCookies, sign, verify } from '../auth/session'; import { OdooConnector, ConnectorError } from '../connectors/odoo'; import { extrapolateProfitLoss } from '../services/extrapolated-profit-loss'; import { applyHistoricalProfitLoss } from '../services/historical-profit-loss'; import { analysedFiles, toPublicUser, type Company, type HoursClient, type User } from '@equinoxe/shared';
+import { z } from 'zod'; import { config, production } from '../config'; import { GimiBudgetPlanConflictError, Store, gimiBudgetPlan, medipostBusinessPlanAssumptions } from '../repositories/store'; import { AuthService } from '../auth/service'; import { parseCookies, sign, verify } from '../auth/session'; import { OdooConnector, ConnectorError } from '../connectors/odoo'; import { extrapolateProfitLoss } from '../services/extrapolated-profit-loss'; import { applyHistoricalProfitLoss } from '../services/historical-profit-loss'; import { analysedFiles, toPublicUser, type Company, type HoursClient, type User } from '@equinoxe/shared';
 const json=(data:unknown,status=200,headers:HeadersInit={})=>new Response(JSON.stringify({data}),{status,headers:{'content-type':'application/json',...headers}}); const fail=(code:string,message:string,status:number)=>new Response(JSON.stringify({error:{code,message}}),{status,headers:{'content-type':'application/json'}}); const cookie=(value:string,expired=false,name="equinoxe_session")=>`${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${expired?0:config.ttlHours*3600}${config.secureCookies?'; Secure':''}`;
 const body=async(request:Request,schema:z.ZodTypeAny)=>{try{const parsed=schema.safeParse(await request.json()); return parsed.success?parsed:parsed;}catch{return {success:false,error:null} as const;}};
 export function createApp(store=new Store(config.dataDir,config.databaseUrl),auth=new AuthService(store),odoo=new OdooConnector(),cashHistory:CashHistoryStorage=new CashHistoryRepository(config.databaseUrl),soConsumables:SoConsumablesStorage=new SoConsumablesRepository(config.databaseUrl),odooFor=companyOdooResolver(odoo),sessionCookieName="equinoxe_session") { if(!/^[A-Za-z0-9_-]{1,64}$/.test(sessionCookieName))throw new Error("Nom de cookie invalide."); const ready=auth.bootstrap();
@@ -46,6 +47,27 @@ export function createApp(store=new Store(config.dataDir,config.databaseUrl),aut
    if(user.role!=='admin'&&!user.analysisAccess.includes('medipost'))return secured(fail('FORBIDDEN','Accès au dossier Medipost refusé.',403));
    if(method==='GET')return secured(json(await store.getMedipostBusinessPlanAssumptions()));
    if(method==='PUT'){const parsed=await body(request,medipostBusinessPlanAssumptions.omit({updatedAt:true,updatedByUserId:true}));if(!parsed.success)return secured(fail('VALIDATION','Hypothèses de business plan invalides.',422));return secured(json(await store.saveMedipostBusinessPlanAssumptions(parsed.data,user.id)));}
+ }
+ const budgetProjectionMatch=path.match(/^\/v1\/companies\/([^/]+)\/budget-plan\/projection$/);
+ if(budgetProjectionMatch&&method==='GET'){
+   const company=await companyFor(user,budgetProjectionMatch[1]);if(!company)return secured(fail('FORBIDDEN','Accès à cette société refusé.',403));
+   if(company.slug!=='gimi')return secured(fail('NOT_AVAILABLE','Le budget est disponible pour Gimi uniquement.',409));
+   const plan=await store.getGimiBudgetPlan(company.id);let baseline;
+   if(plan.useInterimBase){
+     try{
+       const [sections,subsections]=await Promise.all([store.pnlSections.read(),store.pnlSubsections.read()]),closedMonth=Number(plan.baseDate.slice(5,7));
+       const actual=await odooFor(company).getProfitLoss([2026],sections.filter(row=>row.companyId===company.id),subsections.filter(row=>row.companyId===company.id),false,plan.baseDate);
+       baseline=gimiBudgetBaselineFromProfitLoss(extrapolateProfitLoss(actual,2026,closedMonth))??undefined;
+     }catch(error){if(!(error instanceof ConnectorError))throw error;}
+   }
+   return secured(json(buildGimiBudgetProjection(plan,{baseline,source:baseline?'interimAnnualized':'budget2026Reference'})));
+ }
+ const budgetPlanMatch=path.match(/^\/v1\/companies\/([^/]+)\/budget-plan$/);
+ if(budgetPlanMatch){
+   const company=await companyFor(user,budgetPlanMatch[1]);if(!company)return secured(fail('FORBIDDEN','Accès à cette société refusé.',403));
+   if(company.slug!=='gimi')return secured(fail('NOT_AVAILABLE','Le budget est disponible pour Gimi uniquement.',409));
+   if(method==='GET')return secured(json(await store.getGimiBudgetPlan(company.id)));
+   if(method==='PUT'){const denied=admin();if(denied)return secured(denied);const parsed=await body(request,gimiBudgetPlan.omit({companyId:true,updatedAt:true,updatedByUserId:true}));if(!parsed.success)return secured(fail('VALIDATION','Les hypothèses du budget sont invalides.',422));try{return secured(json(await store.saveGimiBudgetPlan(company.id,parsed.data,user.id)));}catch(error){if(error instanceof GimiBudgetPlanConflictError)return secured(fail('CONFLICT',error.message,409));throw error;}}
  }
  const analyticProfitMatch=path.match(/^\/v1\/companies\/([^/]+)\/profit-loss\/analytic(\/entries)?$/);
  if(analyticProfitMatch){const company=await companyFor(user,analyticProfitMatch[1]);if(!company)return secured(fail('FORBIDDEN','Accès à cette société refusé.',403));return secured(await analyticProfitLossResponse(request,company,store,odooFor(company),Boolean(analyticProfitMatch[2])));}

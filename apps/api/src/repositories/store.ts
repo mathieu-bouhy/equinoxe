@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { medipostBusinessPlanDefaults, type AccountAnalyticAllocation, type AnalyticAllocationCode, type BfrSection, type BillingSettings, type Company, type CompanyAccess, type DashboardDefinition, type EmployeeAnalyticAllocation, type HistoricalAccountBalance, type IntegrationMetadata, type MedipostBusinessPlanAssumptions, type ProfitLossSection, type ProfitLossSubsection, type ReportSettings, type SpreadsheetSourceDocument, type TimeEntry, type User } from '@equinoxe/shared';
+import { gimiBudgetPlanDefaults, medipostBusinessPlanDefaults, type AccountAnalyticAllocation, type AnalyticAllocationCode, type BfrSection, type BillingSettings, type Company, type CompanyAccess, type DashboardDefinition, type EmployeeAnalyticAllocation, type GimiBudgetPlan, type HistoricalAccountBalance, type IntegrationMetadata, type MedipostBusinessPlanAssumptions, type ProfitLossSection, type ProfitLossSubsection, type ReportSettings, type SpreadsheetSourceDocument, type TimeEntry, type User } from '@equinoxe/shared';
 import { JsonFile } from './json-file';
 import type { Collection } from './collection';
 import { PostgresDatabase, PostgresFile } from './postgres-file';
@@ -24,6 +24,18 @@ const timeEntry=z.object({id:z.string(),sourceCalendar:z.string(),sourceEventId:
 const billingSettings=z.object({hourlyRate:z.number().finite().nonnegative(),diverseHours:z.number().finite().nonnegative(),updatedAt:z.string(),updatedByUserId:z.string().nullable()});
 const forecastValues=z.object({2026:z.number().finite(),2027:z.number().finite(),2028:z.number().finite()});
 export const medipostBusinessPlanAssumptions=z.object({growth:forecastValues,oldRent:z.number().finite().default(138000),newRent:z.number().finite().default(208847),salaryDifference:z.number().finite().default(-76000),rentDifference:forecastValues,outgoingExecutiveSalary:forecastValues,incomingExecutiveSalary:forecastValues,companyValue:z.number().finite(),cashExtraction:z.number().finite(),loanAmount:z.number().finite(),loanYears:z.number().finite().positive(),loanRate:z.number().finite(),workingCapitalRate:z.number().finite(),capex:forecastValues.default({2026:284966,2027:299214,2028:314175}),rates:z.record(z.string(),forecastValues),updatedAt:z.string(),updatedByUserId:z.string().nullable()});
+const budgetValue=z.number().finite().nullable(),gimiBudgetValues=z.object({2027:budgetValue,2028:budgetValue,2029:budgetValue,2030:budgetValue,2031:budgetValue,2032:budgetValue,2033:budgetValue,2034:budgetValue,2035:budgetValue,2036:budgetValue});
+const budgetDriverValues=z.object({growth:gimiBudgetValues,purchasesRate:gimiBudgetValues,servicesRate:gimiBudgetValues,payrollRate:gimiBudgetValues,workingCapitalRate:gimiBudgetValues});
+const budgetScenarioName=z.enum(['best','neutral','worst']),budgetDepartment=z.enum(['fireInstallation','fireMaintenance','intrusion','led','shared']),budgetJointCommittee=z.enum(['cp200','cp14901']);
+const budgetScenario=z.object({name:budgetScenarioName,values:budgetDriverValues});
+const gimiBudgetDecisions=z.object({growthTaper:z.boolean(),revenueMix:z.boolean(),recurringRevenue:z.boolean(),priceVolume:z.boolean(),backlog:z.boolean(),churn:z.boolean(),purchaseInflation:z.boolean(),pricePassThrough:z.boolean(),grossMarginDefinition:z.boolean(),staffingModel:z.boolean(),productivity:z.boolean(),absenceOvertime:z.boolean(),workingCapital:z.boolean(),badDebt:z.boolean(),inventoryWip:z.boolean(),vehiclePlan:z.boolean(),capexPlan:z.boolean(),buildingTransition:z.boolean(),financing:z.boolean(),taxDividends:z.boolean(),seasonality:z.boolean()});
+const gimiCapexBudget=z.object({software:gimiBudgetValues,vehicles:gimiBudgetValues,it:gimiBudgetValues,tools:gimiBudgetValues,building:gimiBudgetValues,layout:gimiBudgetValues,leasing:gimiBudgetValues,progress:gimiBudgetValues,other:gimiBudgetValues});
+const decisionDefaults={growthTaper:false,revenueMix:false,recurringRevenue:false,priceVolume:false,backlog:false,churn:false,purchaseInflation:false,pricePassThrough:false,grossMarginDefinition:false,staffingModel:false,productivity:false,absenceOvertime:false,workingCapital:false,badDebt:false,inventoryWip:false,vehiclePlan:false,capexPlan:false,buildingTransition:false,financing:false,taxDividends:false,seasonality:false};
+const emptyBudgetYears={2027:null,2028:null,2029:null,2030:null,2031:null,2032:null,2033:null,2034:null,2035:null,2036:null};
+const capexDefaults={software:{...emptyBudgetYears},vehicles:{...emptyBudgetYears},it:{...emptyBudgetYears},tools:{...emptyBudgetYears},building:{...emptyBudgetYears},layout:{...emptyBudgetYears},leasing:{...emptyBudgetYears},progress:{...emptyBudgetYears},other:{...emptyBudgetYears}};
+export const gimiBudgetPlan=z.object({companyId:z.string(),baseDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),useInterimBase:z.boolean(),selectedScenario:budgetScenarioName,baseline2026:z.object({growth:budgetValue,purchasesRate:budgetValue,servicesRate:budgetValue,payrollRate:budgetValue,workingCapitalRate:budgetValue}),scenarios:z.object({best:budgetScenario,neutral:budgetScenario,worst:budgetScenario}),validation:z.object({interimBase:z.boolean(),scenarios:z.boolean(),hiring:z.boolean(),indexation:z.boolean(),building:z.boolean(),bajoma:z.boolean()}),salaryIndexation:z.object({cp200:budgetValue,cp14901:budgetValue}),decisions:gimiBudgetDecisions.default(decisionDefaults),hires:z.array(z.object({id:z.string(),count:z.number().int().min(1).max(1000),function:z.string().trim().min(1).max(120),department:budgetDepartment,jointCommittee:budgetJointCommittee,startDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),annualSalary2026:z.number().finite().nonnegative()})).max(500),capexBudget:gimiCapexBudget.default(capexDefaults),building:z.object({startDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),currentAnnualRent:z.number().finite().nonnegative().default(145000),annualRent:z.number().finite().nonnegative(),annualIndexation:z.number().finite().min(-.5).max(1)}),bajoma:z.object({startDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),monthlyExclVat:z.number().finite().nonnegative(),vatRate:z.number().finite().min(0).max(1)}),revision:z.number().int().nonnegative(),updatedAt:z.string(),updatedByUserId:z.string().nullable()});
+
+export class GimiBudgetPlanConflictError extends Error {}
 
 type CalculationSpec={label:string;terms:Array<[string,'add'|'subtract']>};
 const calculationSpecs:CalculationSpec[]=[
@@ -37,7 +49,7 @@ const calculationSpecs:CalculationSpec[]=[
 const displayOrder=['Chiffre d’affaires','Marchandises','Marge brute','Sous-traitance','Services et biens divers','Personnel','Charges d’exploitation','Produits d’exploitation','Coûts hors achats','EBITDA','Amortissements','Résultat d’exploitation','Financier','Résultat avant impôts','Impôts','Résultat après impôts'];
 
 export class Store {
-  users:Collection<User>;companies:Collection<Company>;access:Collection<CompanyAccess>;dashboards:Collection<DashboardDefinition>;integrations:Collection<IntegrationMetadata>;pnlSections:Collection<ProfitLossSection>;pnlSubsections:Collection<ProfitLossSubsection>;historicalBalances:Collection<HistoricalAccountBalance>;reportSettings:Collection<ReportSettings>;bfrSections:Collection<BfrSection>;analyticAllocationCodes:Collection<AnalyticAllocationCode>;accountAnalyticAllocations:Collection<AccountAnalyticAllocation>;spreadsheetSourceDocuments:Collection<SpreadsheetSourceDocument>;employeeAnalyticAllocations:Collection<EmployeeAnalyticAllocation>;timeEntries:Collection<TimeEntry>;billingSettings:Collection<BillingSettings>;medipostBusinessPlanAssumptions:Collection<MedipostBusinessPlanAssumptions>;
+  users:Collection<User>;companies:Collection<Company>;access:Collection<CompanyAccess>;dashboards:Collection<DashboardDefinition>;integrations:Collection<IntegrationMetadata>;pnlSections:Collection<ProfitLossSection>;pnlSubsections:Collection<ProfitLossSubsection>;historicalBalances:Collection<HistoricalAccountBalance>;reportSettings:Collection<ReportSettings>;bfrSections:Collection<BfrSection>;analyticAllocationCodes:Collection<AnalyticAllocationCode>;accountAnalyticAllocations:Collection<AccountAnalyticAllocation>;spreadsheetSourceDocuments:Collection<SpreadsheetSourceDocument>;employeeAnalyticAllocations:Collection<EmployeeAnalyticAllocation>;timeEntries:Collection<TimeEntry>;billingSettings:Collection<BillingSettings>;medipostBusinessPlanAssumptions:Collection<MedipostBusinessPlanAssumptions>;gimiBudgetPlans:Collection<GimiBudgetPlan>;
   private readonly database?:PostgresDatabase;
   private readonly postgresFiles:Array<PostgresFile<unknown>>=[];
   constructor(dir:string,databaseUrl?:string){
@@ -65,6 +77,7 @@ export class Store {
     this.timeEntries=collection<TimeEntry>('time-entries.json',z.array(timeEntry) as unknown as z.ZodType<TimeEntry[]>,()=>[]);
     this.billingSettings=collection<BillingSettings>('billing-settings.json',z.array(billingSettings),()=>[]);
     this.medipostBusinessPlanAssumptions=collection<MedipostBusinessPlanAssumptions>('medipost-business-plan-assumptions.json',z.array(medipostBusinessPlanAssumptions) as unknown as z.ZodType<MedipostBusinessPlanAssumptions[]>,()=>[]);
+    this.gimiBudgetPlans=collection<GimiBudgetPlan>('gimi-budget-plans.json',z.array(gimiBudgetPlan) as unknown as z.ZodType<GimiBudgetPlan[]>,()=>[]);
   }
   async getBillingSettings(){
     const existing=(await this.billingSettings.read())[0];
@@ -75,6 +88,15 @@ export class Store {
   async saveBillingSettings(values:Pick<BillingSettings,'hourlyRate'|'diverseHours'>,userId:string){
     await this.getBillingSettings();
     return this.billingSettings.mutate(current=>{const saved={...current[0],...values,updatedAt:new Date().toISOString(),updatedByUserId:userId};return {values:[saved],result:saved};});
+  }
+  async getGimiBudgetPlan(companyId:string){
+    const existing=(await this.gimiBudgetPlans.read()).find(plan=>plan.companyId===companyId);if(existing)return existing;
+    const created:GimiBudgetPlan={...gimiBudgetPlanDefaults(companyId),updatedAt:new Date().toISOString(),updatedByUserId:null};
+    return this.gimiBudgetPlans.mutate(current=>{const concurrent=current.find(plan=>plan.companyId===companyId);return concurrent?{values:current,result:concurrent}:{values:[...current,created],result:created};});
+  }
+  async saveGimiBudgetPlan(companyId:string,values:Omit<GimiBudgetPlan,'companyId'|'updatedAt'|'updatedByUserId'>,userId:string){
+    await this.getGimiBudgetPlan(companyId);
+    return this.gimiBudgetPlans.mutate(current=>{const existing=current.find(plan=>plan.companyId===companyId);if(!existing||existing.revision!==values.revision)throw new GimiBudgetPlanConflictError('Le budget a été modifié dans une autre session. Rechargez avant d’enregistrer.');const saved:GimiBudgetPlan={...values,companyId,revision:existing.revision+1,updatedAt:new Date().toISOString(),updatedByUserId:userId};return {values:current.map(plan=>plan.companyId===companyId?saved:plan),result:saved};});
   }
   async bootstrap(){
     await this.database?.bootstrap();

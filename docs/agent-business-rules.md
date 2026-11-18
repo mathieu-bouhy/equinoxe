@@ -86,6 +86,18 @@ Règles validées le 8 septembre 2026, complémentaires à [AGENTS.md](../AGENTS
 - Les clés actuelles s’appliquent actuellement aux trois années. Ne pas prétendre disposer d’un historique des clés ; une répartition versionnée par période serait une évolution à décider.
 - « Calcul des pourcentages » est pour l’instant un emplacement à préciser. Ne pas inventer ses futurs calculs à partir de son titre.
 
+### Budget Gimi 2027–2036
+
+- Créer un espace Budget distinct du reporting financier, avec une sous-section Gimi 2027–2036 et 2027 comme priorité. Les hypothèses sont éditables, persistées par société et versionnées ; un accès à Gimi permet la lecture, seule l'Administration peut enregistrer.
+- La situation intermédiaire au 31 octobre 2026 est une base de travail sélectionnable, pas un exercice clôturé. Best, Neutral et Worst case restent des hypothèses à valider avec Basile.
+- Recrutements : nombre, fonction, département, commission paritaire, date d'entrée et coût annuel 2026. Proposer la moyenne connue de la fonction sans l'imposer. Appliquer l'indexation puis un prorata journalier. CP 200 = 4,17 % en hypothèse initiale ; CP 149.01 reste vide jusqu'à validation.
+- Nouveau bâtiment : le loyer actuel reste appliqué jusqu'en avril 2028, puis le loyer annuel de 340 000 € s'applique à partir de mai, avec indexation de 1,5 % à chaque anniversaire tant qu'une autre convention n'est pas validée.
+- Bajoma refacture 20 804,03 € HTVA par mois, soit 25 172,87 € TVAC à 21 %. Le compte de résultat reprend le HTVA ; la date de début reste une hypothèse éditable initialisée au 1er janvier 2027.
+- La grille de rémunération dirigeant est confidentielle et reste exclusivement côté API. Elle peut alimenter les agrégats budgétaires, mais ni ses paliers, ni son calcul, ni une ligne dédiée ne sont envoyés au navigateur. Le détail et les limites sont documentés dans `docs/gimi-budget-plan.md`.
+- Budget Gimi : afficher les KPI provenant des rapports Odoo (P&L extrapolé, marge, BFR et CAPEX) sans convertir une source absente en zéro. Les cases de décision représentent une validation avec Basile, pas un réalisé comptable.
+- Saisonnalité 2027 : partir du profil mensuel complet 2025 du CA et de la marge brute, l'affiner avec les mois disponibles de 2026, normaliser et réconcilier exactement les douze mois avec le budget annuel. Si les deux séries Odoo ne sont pas disponibles, afficher l'indisponibilité.
+- CAPEX 2027–2036 : utiliser les familles du reporting Investissements – CAPEX comme structure de saisie, mais ne jamais reconduire automatiquement le réalisé historique. Les futurs paiements, financements, cessions et amortissements restent des hypothèses distinctes.
+
 ## 12. Facturation et import des rendez-vous
 
 - Préserver le libellé Facturation et la présentation mensuelle demandée.
