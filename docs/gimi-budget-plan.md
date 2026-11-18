@@ -2,7 +2,7 @@
 
 ## Périmètre de la première version
 
-Le budget constitue un espace distinct du reporting financier. La première sous-section couvre 2027 à 2036, avec 2027 comme année de travail prioritaire. Elle contient six écrans : résultats, KPI et hypothèses utiles, scénarios, rémunérations, CAPEX, puis bâtiment et flux internes.
+Le budget constitue un espace distinct du reporting financier. La première sous-section couvre 2027 à 2036, avec 2027 comme année de travail prioritaire. Elle contient sept écrans : résultats, KPI et hypothèses utiles, scénarios, rémunérations, CAPEX, dette et cash forecast, puis bâtiment et flux internes.
 
 Les hypothèses sont persistées par société dans PostgreSQL et protégées par un numéro de révision. Un utilisateur autorisé à Gimi peut les consulter ; seule l'Administration peut les modifier. La page Résultats présente un premier compte de résultat prévisionnel agrégé de 2026 à 2036.
 
@@ -40,6 +40,15 @@ Le coût budgété applique l'indexation annuelle puis un prorata journalier ent
 - Le réalisé de la dernière période Odoo sert uniquement de repère. Le budget 2027–2036 est complété manuellement ; aucune répétition automatique des acquisitions passées n'est appliquée.
 - La grille contient des montants d'investissement hors TVA. Calendrier de paiement, TVA, financement, cessions et amortissements doivent encore être reliés au futur plan de trésorerie.
 
+## Dette et cash forecast
+
+- La ligne Rachat 1 · CBC est initialisée à 330 000 € de capital par an de 2027 à 2029, puis à zéro. La référence MBP Group est initialisée à 149 000 € de 2027 à 2031, puis à zéro, conformément au fichier de travail disponible.
+- La source ne ventile pas MBP Group entre ses deux crédits. Les échéanciers MBP 1 et MBP 2 restent donc vides ; tant qu'ils ne sont pas confirmés, le calcul utilise uniquement la référence agrégée. Le basculement vers les deux échéanciers détaillés désactive la référence agrégée pour éviter un double comptage.
+- Le cash-flow généré par les résultats est égal au résultat net augmenté des amortissements. Les intérêts sont déjà compris dans le résultat net et ne sont pas déduits une seconde fois.
+- Le cash-flow libre complet ajoute l'impact de la variation du BFR, puis déduit les CAPEX et les remboursements de capital CBC et MBP. Une hausse du BFR consomme de la trésorerie.
+- La trésorerie de clôture est calculée à partir d'une trésorerie d'ouverture au 1er janvier 2027 saisie explicitement. Le solde Odoo au dernier mois clôturé est affiché comme repère, mais il n'est pas assimilé automatiquement au solde du 1er janvier.
+- Un élément manquant — BFR, CAPEX, dette ou trésorerie d'ouverture — reste affiché comme indisponible. Il n'est pas remplacé par zéro.
+
 ## Contrôles attendus avant le compte de résultat prévisionnel
 
 - Valider la méthode de BFR et les ratios par scénario.
@@ -47,3 +56,4 @@ Le coût budgété applique l'indexation annuelle puis un prorata journalier ent
 - Confirmer la date de départ de la refacturation Bajoma.
 - Confirmer si l'indexation du loyer intervient à l'anniversaire du bail ou au 1er janvier.
 - Valider la formule confidentielle et son traitement d'un EBITDA hors de la grille sans l'exposer dans l'interface.
+- Confirmer les échéanciers de capital des deux crédits MBP, les dates exactes de fin du crédit CBC et le solde de trésorerie au 1er janvier 2027.

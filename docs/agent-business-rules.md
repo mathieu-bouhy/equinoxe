@@ -97,6 +97,8 @@ Règles validées le 8 septembre 2026, complémentaires à [AGENTS.md](../AGENTS
 - Budget Gimi : afficher les KPI provenant des rapports Odoo (P&L extrapolé, marge, BFR et CAPEX) sans convertir une source absente en zéro. Les cases de décision représentent une validation avec Basile, pas un réalisé comptable.
 - Saisonnalité 2027 : partir du profil mensuel complet 2025 du CA et de la marge brute, l'affiner avec les mois disponibles de 2026, normaliser et réconcilier exactement les douze mois avec le budget annuel. Si les deux séries Odoo ne sont pas disponibles, afficher l'indisponibilité.
 - CAPEX 2027–2036 : utiliser les familles du reporting Investissements – CAPEX comme structure de saisie, mais ne jamais reconduire automatiquement le réalisé historique. Les futurs paiements, financements, cessions et amortissements restent des hypothèses distinctes.
+- Dette et cash forecast : initialiser CBC à 330 000 € de capital par an jusqu'en 2029 et la référence MBP Group à 149 000 € jusqu'en 2031. Ne pas inventer la ventilation entre les deux crédits MBP : utiliser la référence agrégée jusqu'à saisie complète des deux échéanciers, sans cumuler les deux méthodes.
+- Cash-flow libre : résultat net + amortissements + impact de la variation du BFR − CAPEX − remboursements de capital. Les intérêts déjà présents dans le résultat ne sont pas déduits une seconde fois. Une donnée manquante reste indisponible ; la trésorerie Odoo au dernier mois clôturé n'est qu'un repère tant que le solde au 1er janvier 2027 n'est pas confirmé.
 
 ## 12. Facturation et import des rendez-vous
 

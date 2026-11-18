@@ -17,6 +17,14 @@ export interface GimiBudgetHiring {
   startDate:string;
   annualSalary2026:number;
 }
+export interface GimiBudgetDebtForecast {
+  openingCash2027:number|null;
+  useMbpGroupReference:boolean;
+  cbc:GimiBudgetValues;
+  mbp1:GimiBudgetValues;
+  mbp2:GimiBudgetValues;
+  mbpGroupReference:GimiBudgetValues;
+}
 export interface GimiBudgetPlan {
   companyId:string;
   baseDate:string;
@@ -29,6 +37,7 @@ export interface GimiBudgetPlan {
   decisions:Record<GimiBudgetDecisionKey,boolean>;
   hires:GimiBudgetHiring[];
   capexBudget:Record<GimiBudgetCapexCategory,GimiBudgetValues>;
+  debtForecast:GimiBudgetDebtForecast;
   building:{startDate:string;currentAnnualRent:number;annualRent:number;annualIndexation:number};
   bajoma:{startDate:string;monthlyExclVat:number;vatRate:number};
   revision:number;
@@ -45,12 +54,14 @@ export function gimiBudgetPlanDefaults(companyId:string):Omit<GimiBudgetPlan,'up
   const neutral=scenario('neutral',.12,.34,.12,.30);neutral.values.payrollRate[2027]=.28;
   const decisionKeys:GimiBudgetDecisionKey[]=['growthTaper','revenueMix','recurringRevenue','priceVolume','backlog','churn','purchaseInflation','pricePassThrough','grossMarginDefinition','staffingModel','productivity','absenceOvertime','workingCapital','badDebt','inventoryWip','vehiclePlan','capexPlan','buildingTransition','financing','taxDividends','seasonality'];
   const capexCategories:GimiBudgetCapexCategory[]=['software','vehicles','it','tools','building','layout','leasing','progress','other'];
+  const cbc=years(0);cbc[2027]=330000;cbc[2028]=330000;cbc[2029]=330000;
+  const mbpGroupReference=years(0);mbpGroupReference[2027]=149000;mbpGroupReference[2028]=149000;mbpGroupReference[2029]=149000;mbpGroupReference[2030]=149000;mbpGroupReference[2031]=149000;
   return {
     companyId,baseDate:'2026-10-31',useInterimBase:true,selectedScenario:'neutral',
     baseline2026:{growth:.144,purchasesRate:.34,servicesRate:.12,payrollRate:.271,workingCapitalRate:null},
     scenarios:{best:scenario('best',.15,.28,.08,.24),neutral,worst:scenario('worst',.05,.40,.125,.32)},
     validation:{interimBase:false,scenarios:false,hiring:false,indexation:false,building:false,bajoma:false},
-    salaryIndexation:{cp200:.0417,cp14901:null},decisions:Object.fromEntries(decisionKeys.map(key=>[key,false])) as Record<GimiBudgetDecisionKey,boolean>,hires:[],capexBudget:Object.fromEntries(capexCategories.map(key=>[key,years(null)])) as Record<GimiBudgetCapexCategory,GimiBudgetValues>,
+    salaryIndexation:{cp200:.0417,cp14901:null},decisions:Object.fromEntries(decisionKeys.map(key=>[key,false])) as Record<GimiBudgetDecisionKey,boolean>,hires:[],capexBudget:Object.fromEntries(capexCategories.map(key=>[key,years(null)])) as Record<GimiBudgetCapexCategory,GimiBudgetValues>,debtForecast:{openingCash2027:null,useMbpGroupReference:true,cbc,mbp1:years(null),mbp2:years(null),mbpGroupReference},
     building:{startDate:'2028-05-01',currentAnnualRent:145000,annualRent:340000,annualIndexation:.015},
     bajoma:{startDate:'2027-01-01',monthlyExclVat:20804.03,vatRate:.21},
     revision:0,
@@ -90,3 +101,44 @@ export function bajomaAnnualCharge(bajoma:GimiBudgetPlan['bajoma'],year:GimiBudg
 export type GimiBudgetProjectionLineKind='amount'|'percentage';
 export interface GimiBudgetProjectionLine { key:string; label:string; kind:GimiBudgetProjectionLineKind; emphasis?:'subtotal'|'total'|'result'; values:Record<string,number> }
 export interface GimiBudgetProjection { scenario:GimiBudgetScenarioName; baseDate:string; source:'interimAnnualized'|'budget2026Reference'; sourceNote:string; years:number[]; lines:GimiBudgetProjectionLine[]; generatedAt:string }
+
+export interface GimiBudgetCashForecastYear {
+  year:GimiBudgetYear;
+  netResult:number;
+  depreciationAddBack:number;
+  operatingCashFlow:number;
+  workingCapitalImpact:number|null;
+  capex:number|null;
+  cbcRepayment:number|null;
+  mbp1Repayment:number|null;
+  mbp2Repayment:number|null;
+  mbpReferenceRepayment:number|null;
+  mbpRepayment:number|null;
+  totalDebtRepayment:number|null;
+  cashAfterDebt:number|null;
+  freeCashFlow:number|null;
+  openingCash:number|null;
+  closingCash:number|null;
+  capitalCoverage:number|null;
+}
+
+export function gimiBudgetCashForecast(plan:GimiBudgetPlan,projection:GimiBudgetProjection,actualWorkingCapital2026:number|null):GimiBudgetCashForecastYear[]{
+  const line=(key:string)=>projection.lines.find(item=>item.key===key)?.values??{};
+  const net=line('netResult'),depreciation=line('depreciation'),revenue=line('revenue'),scenario=plan.scenarios[plan.selectedScenario].values;
+  let previousWorkingCapital=actualWorkingCapital2026,openingCash=plan.debtForecast.openingCash2027;
+  return gimiBudgetYears.map(year=>{
+    const yearKey=String(year),netResult=net[yearKey]??0,depreciationAddBack=-(depreciation[yearKey]??0),operatingCashFlow=netResult+depreciationAddBack;
+    const workingCapitalRate=scenario.workingCapitalRate[year],workingCapital=workingCapitalRate===null?null:(revenue[yearKey]??0)*workingCapitalRate;
+    const workingCapitalImpact=workingCapital===null||previousWorkingCapital===null?null:previousWorkingCapital-workingCapital;
+    if(workingCapital!==null)previousWorkingCapital=workingCapital;else previousWorkingCapital=null;
+    const capexValues=Object.values(plan.capexBudget).map(values=>values[year]),capex=capexValues.every(value=>value!==null)?capexValues.reduce<number>((sum,value)=>sum+(value??0),0):null;
+    const cbcRepayment=plan.debtForecast.cbc[year],mbp1Repayment=plan.debtForecast.mbp1[year],mbp2Repayment=plan.debtForecast.mbp2[year],mbpReferenceRepayment=plan.debtForecast.mbpGroupReference[year];
+    const mbpRepayment=plan.debtForecast.useMbpGroupReference?mbpReferenceRepayment:mbp1Repayment===null||mbp2Repayment===null?null:mbp1Repayment+mbp2Repayment;
+    const totalDebtRepayment=cbcRepayment===null||mbpRepayment===null?null:cbcRepayment+mbpRepayment;
+    const cashAfterDebt=totalDebtRepayment===null?null:operatingCashFlow-totalDebtRepayment;
+    const freeCashFlow=workingCapitalImpact===null||capex===null||totalDebtRepayment===null?null:operatingCashFlow+workingCapitalImpact-capex-totalDebtRepayment;
+    const currentOpeningCash=openingCash,closingCash=currentOpeningCash===null||freeCashFlow===null?null:currentOpeningCash+freeCashFlow;
+    openingCash=closingCash;
+    return {year,netResult,depreciationAddBack,operatingCashFlow,workingCapitalImpact,capex,cbcRepayment,mbp1Repayment,mbp2Repayment,mbpReferenceRepayment,mbpRepayment,totalDebtRepayment,cashAfterDebt,freeCashFlow,openingCash:currentOpeningCash,closingCash,capitalCoverage:totalDebtRepayment===null||totalDebtRepayment===0?null:operatingCashFlow/totalDebtRepayment};
+  });
+}
