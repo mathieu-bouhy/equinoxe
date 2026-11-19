@@ -1,0 +1,107 @@
+.allocation-account-submenu {
+  border-top: 1px solid var(--border);
+  background: #fbfcfb;
+}
+
+.allocation-account-submenu summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  cursor: pointer;
+  list-style: none;
+  color: #173f37;
+}
+
+.allocation-account-submenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.allocation-account-submenu summary > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.allocation-account-submenu summary svg {
+  transition: transform .18s ease;
+}
+
+.allocation-account-submenu[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.allocation-account-submenu summary small {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eaf3ef;
+  color: #397163;
+  font-weight: 800;
+}
+
+.allocation-account-list {
+  display: grid;
+  border-top: 1px solid var(--border);
+  background: #fff;
+}
+
+.allocation-account-row {
+  display: grid;
+  grid-template-columns: 100px minmax(220px, 1fr) minmax(150px, 220px);
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.allocation-account-row:last-child {
+  border-bottom: 0;
+}
+
+.allocation-account-row > strong {
+  font-size: 12px;
+  color: #173f37;
+}
+
+.allocation-account-row > em {
+  justify-self: end;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-style: normal;
+  font-weight: 800;
+  text-align: center;
+}
+
+.allocation-account-row > em.assigned {
+  background: #e5f3ed;
+  color: #1f6855;
+}
+
+.allocation-account-row > em.unassigned {
+  background: #fff1c5;
+  color: #7d5900;
+}
+
+.allocation-account-list > p {
+  margin: 0;
+  padding: 16px 20px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 650px) {
+  .allocation-account-row {
+    grid-template-columns: 80px 1fr;
+  }
+
+  .allocation-account-row > em {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .allocation-account-submenu summary {
+    align-items: flex-start;
+  }
+}
