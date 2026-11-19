@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { gimiAllocationRecommendations } from '../src/components/AllocationRecommendations';
+import { gimiChartOfAccounts } from '../src/components/gimi-chart-of-accounts';
 
 describe('Gimi analytic allocation recommendations', () => {
   test('covers the requested accounting classes', () => {
@@ -27,5 +28,12 @@ describe('Gimi analytic allocation recommendations', () => {
     for (const driver of ['véhicule', 'surface', 'utilisateur', 'intervention', 'chantier', 'employé']) {
       expect(text).toContain(driver);
     }
+  });
+
+  test('includes the chart of accounts consulted in Odoo', () => {
+    expect(Object.fromEntries(Object.entries(gimiChartOfAccounts).map(([code,accounts])=>[code,accounts.length]))).toEqual({60:36,61:86,62:55,64:14,74:2});
+    expect(gimiChartOfAccounts['60']).toContainEqual({code:'600500',label:"MATERIEL CONTROLE D'ACCES"});
+    expect(gimiChartOfAccounts['64']).toContainEqual({code:'640100',label:'TAXES CIRCULATION CAMIONNETTES'});
+    expect(gimiChartOfAccounts['74']).toContainEqual({code:'740000',label:"SUBSIDES D'EXPLOITATION"});
   });
 });

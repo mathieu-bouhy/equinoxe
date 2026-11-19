@@ -84,6 +84,20 @@
   color: #7d5900;
 }
 
+.allocation-account-row > em.unknown {
+  background: #eef2f1;
+  color: #60706c;
+}
+
+.allocation-account-list > p.allocation-account-source {
+  margin: 0;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  background: #f6f9f8;
+  color: #60706c;
+  font-size: 10px;
+}
+
 .allocation-account-list > p {
   margin: 0;
   padding: 16px 20px;
