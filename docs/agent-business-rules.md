@@ -59,6 +59,18 @@ Règles validées le 8 septembre 2026, complémentaires à [AGENTS.md](../AGENTS
 
 ## 11. Gimi : comptabilité analytique
 
+### Recommandations de clés analytiques
+
+- Le chiffre d'affaires est déjà affecté directement aux départements analytiques et n'est pas recalculé par la page de recommandations.
+- Pour les charges des classes 60, 61, 62 et 64, ainsi que les produits de classe 74, l'ordre de préférence est : traçabilité directe, inducteur opérationnel mesurable, centre `Corporate / commun`, puis chiffre d'affaires uniquement comme solution de repli documentée.
+- Les coûts directement traçables à un client, chantier, contrat ou intervention conservent cette dimension avant toute ventilation par département.
+- Les salaires sont répartis par employé et département ; les fonctions mixtes utilisent les temps, projets ou portefeuilles lorsqu'ils sont disponibles.
+- Les véhicules sont rattachés au véhicule, puis à son conducteur et à son département ; le kilométrage ou les jours d'affectation servent en cas de partage.
+- L'informatique utilise les utilisateurs actifs, licences ou appareils ; les surfaces utilisent les mètres carrés occupés ; les consommables et la sous-traitance utilisent les interventions, chantiers ou heures.
+- Les fonctions de support non directement traçables restent dans un centre `Corporate / commun`. Une redistribution éventuelle doit être présentée séparément de la marge contributive des départements.
+- Toute clé doit être historisée avec une date de début et de fin afin de préserver les comparaisons de périodes déjà clôturées.
+- La page `Clés recommandées` est une proposition en lecture seule ; elle ne modifie pas les clés enregistrées dans la configuration.
+
 - SO consommables (remplacement validé le 9 septembre 2026) : SO confirmés depuis 2023 liés aux factures clients validées, comptes de la rubrique Chiffre d’affaires et affectations analytiques actuelles. Conserver les SO rattachés sans ambiguïté à Incendie installation ou Incendie maintenance ; isoler les rattachements mixtes/ambigus. Ne plus utiliser `gimi_type` ni la répartition ligne par ligne des achats du 600100 de l’analyse abandonnée.
 - Montant par SO = valeur des quantités commandées HT après remise des lignes de type `consu` (Biens, suivis en stock ou non), hors services, combos, notes/sections et acomptes. Compter chaque SO une seule fois dans l’année de commande (date Odoo UTC convertie en Europe/Brussels), même avec plusieurs factures. Il s’agit de valeur commandée et non de CA déjà facturé : les quantités facturées et les avoirs ne remplacent pas les quantités du SO.
 - L’onglet conserve le titre « Achats — SO liés » : quatre colonnes 2023–2026 et quatre lignes (montant installation, part installation, montant maintenance, part maintenance). Pourcentage de chaque département sur leur somme annuelle, tiret si total nul. 2026 borné au mois clôturé, sans extrapolation. Bouton Recalculer explicite, détails par SO et facture/compte conservés dans PostgreSQL, archives récupérables et absence de repli JSON. Aucun changement d’affectation, de clé ou des rapports existants. Ancienne analyse retirée et archivée, ancienne clé Gimi Type supprimée du programme.
