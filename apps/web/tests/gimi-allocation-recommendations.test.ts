@@ -30,6 +30,15 @@ describe('Gimi analytic allocation recommendations', () => {
     }
   });
 
+  test('allocates consumables using electricians and workers labour', () => {
+    const consumables = gimiAllocationRecommendations
+      .find((group) => group.code === '60')!
+      .rows.find((row) => row.label.startsWith('Consommables'))!;
+    expect(consumables.primary).toBe('Main-d’œuvre électriciens / ouvriers');
+    expect(consumables.alternatives).toContain('Heures prestées par département');
+    expect(consumables.rationale).not.toMatch(/chiffre d’affaires.*mieux/i);
+  });
+
   test('includes the chart of accounts consulted in Odoo', () => {
     expect(Object.fromEntries(Object.entries(gimiChartOfAccounts).map(([code,accounts])=>[code,accounts.length]))).toEqual({60:36,61:86,62:55,64:14,74:2});
     expect(gimiChartOfAccounts['60']).toContainEqual({code:'600500',label:"MATERIEL CONTROLE D'ACCES"});
