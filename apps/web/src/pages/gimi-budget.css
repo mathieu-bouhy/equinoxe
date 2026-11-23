@@ -27,3 +27,46 @@
 .budget-result-table tr.result-result th,.budget-result-table tr.result-result td{font-weight:650;background:var(--brand-emphasis);color:var(--brand-deep);border-top:2px solid var(--brand-accent)}
 .budget-result-table tr.ratio-row th,.budget-result-table tr.ratio-row td{background:var(--surface);font-weight:400}
 .seasonality-table thead th{font-weight:600}
+
+/* Lighter visual hierarchy across every Budget section. */
+.gimi-budget-page h2{font-weight:600}
+.gimi-budget-page .eyebrow{font-weight:600}
+.budget-tabs a{font-weight:500}
+.budget-tabs a.active{font-weight:650}
+.scenario-selector button{font-weight:500}
+.scenario-card{border-left-width:2px;box-shadow:none}
+.scenario-heading>span,.decision-section>.card-title-row>span,.control-list-card>.card-title-row>span{font-weight:550}
+.validation-grid label,.assumption-form label,.debt-cash-inputs>label{font-weight:500}
+.budget-data-unavailable{font-weight:500}
+.budget-kpi-card span,.control-score span{font-weight:550}
+.budget-kpi-card strong,.year-kpis strong,.bajoma-summary strong,.control-kpi strong{font-weight:600}
+.gimi-budget-page table thead th{font-weight:600}
+.gimi-budget-page table tbody th{font-weight:500}
+.gimi-budget-page table tbody td{font-weight:400}
+.capex-total-row th,.capex-total-row td{font-weight:600;background:var(--brand-emphasis)}
+.cash-forecast-table .cash-subtotal th,.cash-forecast-table .cash-subtotal td{font-weight:550;background:var(--brand-tint)}
+.cash-forecast-table .cash-secondary-result th,.cash-forecast-table .cash-secondary-result td{font-weight:600;background:color-mix(in srgb,var(--brand-tint) 65%,white)}
+.cash-forecast-table .cash-primary-result th,.cash-forecast-table .cash-primary-result td{font-weight:600;background:var(--brand-emphasis)}
+.cash-forecast-table .cash-closing th,.cash-forecast-table .cash-closing td{font-weight:650;background:var(--brand-emphasis);color:var(--brand-deep);border-top:2px solid var(--brand-accent)}
+.cash-forecast-card>.report-note a,.control-item>a{font-weight:550}
+.capex-budget-table .focus-year,.debt-budget-table .focus-year,.cash-forecast-table .focus-year{background:color-mix(in srgb,var(--brand-tint) 45%,white);box-shadow:inset 1px 0 var(--brand-border),inset -1px 0 var(--brand-border)}
+.capex-budget-table thead .focus-year,.debt-budget-table thead .focus-year,.cash-forecast-table thead .focus-year{background:var(--brand-emphasis);color:var(--brand-deep)}
+.cash-summary-card{border-color:var(--border);background:var(--surface);box-shadow:none}
+.cash-summary-heading{border-bottom-color:var(--border)}
+.cash-summary-heading>span{background:var(--brand-tint);color:var(--brand-deep);font-weight:550}
+.cash-bridge{background:var(--brand-tint)}
+.cash-bridge-step{border-color:var(--border);box-shadow:none}
+.cash-bridge-step small{font-weight:550}
+.cash-bridge-operator{font-weight:550}
+.cash-bridge-step.result{border:1px solid var(--brand-border);background:var(--brand-emphasis)}
+.cash-bridge-step.result small,.cash-bridge-step.result>span,.cash-bridge-step.result strong{color:var(--brand-deep)}
+.cash-bridge-step.result.missing{border-style:dashed;background:var(--surface)}
+.cash-summary-table thead th,.cash-summary-table thead th:first-child,.source-register-table thead th{background:var(--brand-tint);color:var(--brand-deep);font-weight:600}
+.cash-summary-table thead .focus-year{background:var(--brand-emphasis);color:var(--brand-deep)}
+.cash-summary-table .cash-summary-highlight th,.cash-summary-table .cash-summary-highlight td{font-weight:550;background:var(--brand-tint)}
+.cash-summary-table .cash-summary-result th,.cash-summary-table .cash-summary-result td{font-weight:600;background:var(--brand-emphasis)}
+.cash-summary-note::before{font-weight:600;background:var(--brand-deep)}
+.control-hero{border-left-width:2px;background:var(--surface)}
+.control-status-label,.source-status{font-weight:550}
+.decision-item strong,.control-item>div>strong{font-weight:550}
+.source-register-table td:nth-child(2){font-weight:500}
