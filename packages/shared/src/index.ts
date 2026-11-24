@@ -113,3 +113,4 @@ export * from './lonneux-capex';
 
 export * from './partner-rankings';
 export * from './gimi-budget-plan';
+export * from './gimi-budget-accounts';

@@ -1,3 +1,5 @@
+import { gimiBudgetAccountPlanningDefaults, type GimiBudgetAccountPlanning } from './gimi-budget-accounts';
+
 export const gimiBudgetYears=[2027,2028,2029,2030,2031,2032,2033,2034,2035,2036] as const;
 export type GimiBudgetYear=typeof gimiBudgetYears[number];
 export type GimiBudgetScenarioName='best'|'neutral'|'worst';
@@ -15,7 +17,21 @@ export interface GimiBudgetHiring {
   department:GimiBudgetDepartment;
   jointCommittee:GimiBudgetJointCommittee;
   startDate:string;
+  annualSalary2027:number;
+  hasCompanyCar:boolean;
+  annualCarLeaseBudget:number|null;
+}
+export interface GimiBudgetSalaryIncrease {
+  id:string;
+  count:number;
+  function:string;
+  department:GimiBudgetDepartment;
+  jointCommittee:GimiBudgetJointCommittee;
+  effectiveDate:string;
   annualSalary2026:number;
+  increaseRate:number|null;
+  hasCompanyCar:boolean;
+  annualCarLeaseBudget:number|null;
 }
 export interface GimiBudgetDebtForecast {
   openingCash2027:number|null;
@@ -36,8 +52,10 @@ export interface GimiBudgetPlan {
   salaryIndexation:Record<GimiBudgetJointCommittee,number|null>;
   decisions:Record<GimiBudgetDecisionKey,boolean>;
   hires:GimiBudgetHiring[];
+  salaryIncreases:GimiBudgetSalaryIncrease[];
   capexBudget:Record<GimiBudgetCapexCategory,GimiBudgetValues>;
   debtForecast:GimiBudgetDebtForecast;
+  accountPlanning:GimiBudgetAccountPlanning;
   building:{startDate:string;currentAnnualRent:number;annualRent:number;annualIndexation:number};
   bajoma:{startDate:string;monthlyExclVat:number;vatRate:number};
   revision:number;
@@ -61,7 +79,7 @@ export function gimiBudgetPlanDefaults(companyId:string):Omit<GimiBudgetPlan,'up
     baseline2026:{growth:.144,purchasesRate:.34,servicesRate:.12,payrollRate:.271,workingCapitalRate:null},
     scenarios:{best:scenario('best',.15,.28,.08,.24),neutral,worst:scenario('worst',.05,.40,.125,.32)},
     validation:{interimBase:false,scenarios:false,hiring:false,indexation:false,building:false,bajoma:false},
-    salaryIndexation:{cp200:.0417,cp14901:null},decisions:Object.fromEntries(decisionKeys.map(key=>[key,false])) as Record<GimiBudgetDecisionKey,boolean>,hires:[],capexBudget:Object.fromEntries(capexCategories.map(key=>[key,years(null)])) as Record<GimiBudgetCapexCategory,GimiBudgetValues>,debtForecast:{openingCash2027:null,useMbpGroupReference:true,cbc,mbp1:years(null),mbp2:years(null),mbpGroupReference},
+    salaryIndexation:{cp200:.0417,cp14901:null},decisions:Object.fromEntries(decisionKeys.map(key=>[key,false])) as Record<GimiBudgetDecisionKey,boolean>,hires:[],salaryIncreases:[],capexBudget:Object.fromEntries(capexCategories.map(key=>[key,years(null)])) as Record<GimiBudgetCapexCategory,GimiBudgetValues>,debtForecast:{openingCash2027:null,useMbpGroupReference:true,cbc,mbp1:years(null),mbp2:years(null),mbpGroupReference},accountPlanning:gimiBudgetAccountPlanningDefaults(),
     building:{startDate:'2028-05-01',currentAnnualRent:145000,annualRent:340000,annualIndexation:.015},
     bajoma:{startDate:'2027-01-01',monthlyExclVat:20804.03,vatRate:.21},
     revision:0,
@@ -76,8 +94,20 @@ const dateFraction=(year:number,startDate:string)=>{
 };
 
 export function hiringAnnualCost(hiring:GimiBudgetHiring,year:GimiBudgetYear,indexation:Record<GimiBudgetJointCommittee,number|null>){
-  const rate=indexation[hiring.jointCommittee]??0,indexed=hiring.annualSalary2026*Math.pow(1+rate,year-2026);
+  const rate=indexation[hiring.jointCommittee]??0,indexed=hiring.annualSalary2027*Math.pow(1+rate,year-2027);
   return Math.max(0,hiring.count)*indexed*dateFraction(year,hiring.startDate);
+}
+
+export function annualCarLeaseCost(item:{count:number;hasCompanyCar:boolean;annualCarLeaseBudget:number|null},year:GimiBudgetYear,startDate:string){
+  if(!item.hasCompanyCar||item.annualCarLeaseBudget===null)return 0;
+  return Math.max(0,item.count)*Math.max(0,item.annualCarLeaseBudget)*dateFraction(year,startDate);
+}
+
+/** Incremental salary cost only; the employee's base salary remains in the existing payroll budget. */
+export function salaryIncreaseAnnualCost(increase:GimiBudgetSalaryIncrease,year:GimiBudgetYear,indexation:Record<GimiBudgetJointCommittee,number|null>){
+  if(increase.increaseRate===null)return 0;
+  const rate=indexation[increase.jointCommittee]??0,indexedBase=increase.annualSalary2026*Math.pow(1+rate,year-2026);
+  return Math.max(0,increase.count)*indexedBase*Math.max(0,increase.increaseRate)*dateFraction(year,increase.effectiveDate);
 }
 
 export function buildingAnnualRent(building:GimiBudgetPlan['building'],year:GimiBudgetYear){
