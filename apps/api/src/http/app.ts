@@ -22,6 +22,7 @@ import { employeeAssignmentsSchema, saveEmployeeAssignments, EmployeeAssignmentE
 import { loadBalanceSheet } from '../services/balance-sheet';
 import { buildMarginAnalysis } from '../services/margin-analysis';
 import { buildGimiBudgetProjection, gimiBudgetBaselineFromProfitLoss } from '../services/gimi-budget-projection';
+import { loadGimiBudgetAccounts } from '../services/gimi-budget-accounts';
 import { accountSection, sortAccountAllocations } from '../services/analytic-allocation';
 import { z } from 'zod'; import { config, production } from '../config'; import { GimiBudgetPlanConflictError, Store, gimiBudgetPlan, medipostBusinessPlanAssumptions } from '../repositories/store'; import { AuthService } from '../auth/service'; import { parseCookies, sign, verify } from '../auth/session'; import { OdooConnector, ConnectorError } from '../connectors/odoo'; import { extrapolateProfitLoss } from '../services/extrapolated-profit-loss'; import { applyHistoricalProfitLoss } from '../services/historical-profit-loss'; import { analysedFiles, toPublicUser, type Company, type HoursClient, type User } from '@equinoxe/shared';
 const json=(data:unknown,status=200,headers:HeadersInit={})=>new Response(JSON.stringify({data}),{status,headers:{'content-type':'application/json',...headers}}); const fail=(code:string,message:string,status:number)=>new Response(JSON.stringify({error:{code,message}}),{status,headers:{'content-type':'application/json'}}); const cookie=(value:string,expired=false,name="equinoxe_session")=>`${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${expired?0:config.ttlHours*3600}${config.secureCookies?'; Secure':''}`;
@@ -61,6 +62,16 @@ export function createApp(store=new Store(config.dataDir,config.databaseUrl),aut
      }catch(error){if(!(error instanceof ConnectorError))throw error;}
    }
    return secured(json(buildGimiBudgetProjection(plan,{baseline,source:baseline?'interimAnnualized':'budget2026Reference'})));
+ }
+ const budgetAccountsMatch=path.match(/^\/v1\/companies\/([^/]+)\/budget-plan\/accounts$/);
+ if(budgetAccountsMatch&&method==='GET'){
+   const company=await companyFor(user,budgetAccountsMatch[1]);if(!company)return secured(fail('FORBIDDEN','Accès à cette société refusé.',403));
+   if(company.slug!=='gimi')return secured(fail('NOT_AVAILABLE','Le budget est disponible pour Gimi uniquement.',409));
+   const group=z.enum(['salesPurchases','operating']).safeParse(url.searchParams.get('group'));
+   if(!group.success)return secured(fail('VALIDATION','Le groupe de comptes budgétaires est invalide.',422));
+   const setting=(await store.reportSettings.read()).find(row=>row.companyId===company.id);
+   if(!setting)return secured(fail('NOT_CONFIGURED','Le dernier mois clôturé de Gimi doit être configuré.',409));
+   return secured(json(await loadGimiBudgetAccounts(odooFor(company),setting.lastClosedMonth,group.data)));
  }
  const budgetPlanMatch=path.match(/^\/v1\/companies\/([^/]+)\/budget-plan$/);
  if(budgetPlanMatch){

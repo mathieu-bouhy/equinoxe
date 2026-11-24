@@ -1,6 +1,6 @@
 import type { PartnerRankingsReport } from '@equinoxe/shared';
 import type { CapexReport,LonneuxCapexReport } from '@equinoxe/shared';
-import type { MarginAnalysisReport, AccountAnalyticAllocation, AccountingEntry, AnalyticAllocationCode, BalanceReport, BfrReport, BfrSection, BillingSettings, CashFlowReport, Company, DashboardDefinition, EmployeeAnalyticAllocation, GimiBudgetPlan, GimiBudgetProjection, IntegrationMetadata, HistoricalAccountBalance, MedipostBusinessPlanAssumptions, ProfitLossLtmReport, ProfitLossMonthlyReport, ProfitLossReport, ProfitLossSection, ProfitLossSubsection, PublicUser, ReportSettings, TimeEntry } from '@equinoxe/shared';
+import type { MarginAnalysisReport, AccountAnalyticAllocation, AccountingEntry, AnalyticAllocationCode, BalanceReport, BfrReport, BfrSection, BillingSettings, CashFlowReport, Company, DashboardDefinition, EmployeeAnalyticAllocation, GimiBudgetAccountGroup, GimiBudgetAccountSourceReport, GimiBudgetPlan, GimiBudgetProjection, IntegrationMetadata, HistoricalAccountBalance, MedipostBusinessPlanAssumptions, ProfitLossLtmReport, ProfitLossMonthlyReport, ProfitLossReport, ProfitLossSection, ProfitLossSubsection, PublicUser, ReportSettings, TimeEntry } from '@equinoxe/shared';
 
 export class ApiError extends Error { constructor(public status:number,message:string) { super(message); } }
 async function request<T>(url:string,init?:RequestInit):Promise<T> { let res:Response;try{res=await fetch(url,{credentials:'include',headers:{'content-type':'application/json',...(init?.headers??{})},...init});}catch{throw new ApiError(0,'Le serveur Equinoxe est indisponible.');}let payload:any;try{payload=await res.json();}catch{throw new ApiError(res.status,'Le serveur Equinoxe ne répond pas correctement.');}if(!res.ok)throw new ApiError(res.status,payload.error?.message??'Une erreur est survenue.');return payload.data; }
@@ -8,6 +8,7 @@ const company=(id:string,path:string)=>`/v1/companies/${id}${path}`;
 export const api={
   gimiBudgetPlan:(id:string)=>request<GimiBudgetPlan>(company(id,'/budget-plan')),
   gimiBudgetProjection:(id:string)=>request<GimiBudgetProjection>(company(id,'/budget-plan/projection')),
+  gimiBudgetAccounts:(id:string,group:GimiBudgetAccountGroup)=>request<GimiBudgetAccountSourceReport>(company(id,`/budget-plan/accounts?group=${group}`)),
   saveGimiBudgetPlan:(id:string,value:Omit<GimiBudgetPlan,'companyId'|'updatedAt'|'updatedByUserId'>)=>request<GimiBudgetPlan>(company(id,'/budget-plan'),{method:'PUT',body:JSON.stringify(value)}),
   treasury:(id:string,view:import('@equinoxe/shared').TreasurySide,mode:'closed'|'today'='closed')=>request<import('@equinoxe/shared').AgedBalanceReport>(company(id,`/treasury?view=${view}&mode=${mode}`)),
   cashOverview:(id:string)=>request<import('@equinoxe/shared').CashOverviewReport>(company(id,'/treasury?view=synthese')),

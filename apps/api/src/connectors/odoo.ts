@@ -24,7 +24,7 @@ export function assertReadOnlyOdooMethod(method: string) {
 
 type Group = { account_id?: [number, string]; balance?: number; debit?:number; credit?:number };
 type MonthlyGroup = Group & { __range?: { 'date:month'?: { from?: string } } };
-type Account = { id: number; code?: string | false; name?: string | false; account_type: string };
+type Account = { id: number; code?: string | false; name?: string | false; account_type: string; deprecated?: boolean };
 export function isProfitLossAccountCode(code: Account['code']): code is string { return typeof code === 'string' && /^\d{1,12}$/.test(code); }
 const definitions: [string, string][] = [['revenue', 'Chiffre d’affaires'], ['purchases', 'Marchandises'], ['subcontracting', 'Sous-traitance'], ['services', 'Services et biens divers (hors bâtiment, véhicules et dirigeants)'], ['building', 'Frais de bâtiment'], ['vehicles', 'Frais de véhicules'], ['management', 'Rémunérations dirigeants'], ['personnel', 'Rémunérations, charges sociales et pensions'], ['operatingCharges', 'Charges d’exploitation'], ['operatingIncome', 'Produits d’exploitation'], ['depreciation', 'Amortissements'], ['provisions', 'Provisions'], ['financialCharges', 'Charges financières'], ['financialIncome', 'Produits financiers'], ['exceptional', 'Produits & charges exceptionnels'], ['taxes', 'Impôts']];
 const configuredSections=(sections:ProfitLossSection[])=>sections.filter(section=>section.kind==='accounts');
@@ -164,9 +164,12 @@ export class OdooConnector {
    * for application data and its allow-list rejects every write method.
    */
   async testConnection() { await this.authenticate(); return { provider: 'odoo' as const, connected: true, readOnlyEnforced: true }; }
-  async getProfitLossAccounts() {
+  async getProfitLossAccounts(options: { activeOnly?: boolean; language?: string } = {}) {
     const uid=await this.authenticate();
-    const accounts=await this.call(uid,'account.account','search_read',[['|',['code','=like','6%'],['code','=like','7%']]],{fields:['code','name','account_type'],order:'code asc',context:{active_test:false}}) as Account[];
+    const domain=options.activeOnly
+      ? ['&',['deprecated','=',false],'|',['code','=like','6%'],['code','=like','7%']]
+      : ['|',['code','=like','6%'],['code','=like','7%']];
+    const accounts=await this.call(uid,'account.account','search_read',[domain],{fields:['code','name','account_type','deprecated'],order:'code asc',context:{active_test:false,...(options.language?{lang:options.language}:{})}}) as Account[];
     return accounts.filter(account=>isProfitLossAccountCode(account.code)&&/^[67]/.test(account.code)).map(account=>({id:String(account.id),code:account.code as string,label:typeof account.name==='string'&&account.name.trim()?account.name:'Compte sans libellé'})).sort((a,b)=>a.code.localeCompare(b.code,'fr-BE',{numeric:true}));
   }
   /** Paginated, posted ledger used by analytical P&L drilldowns. */

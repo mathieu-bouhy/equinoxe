@@ -18,6 +18,7 @@ test('budget Gimi persistant, validé et protégé contre les écrasements concu
   const gimi=(await store.companies.read()).find(company=>company.slug==='gimi')!;
   const initial=await call(`/v1/companies/${gimi.id}/budget-plan`,'GET',undefined,cookie),plan=(await initial.json()).data;
   expect(initial.status).toBe(200);expect(plan.baseDate).toBe('2026-10-31');expect(plan.scenarios.neutral.values.growth['2027']).toBe(.12);expect(plan.salaryIndexation.cp14901).toBeNull();
+  expect(plan.salaryIncreases).toEqual([]);expect(plan.accountPlanning.categoryGrowthRates.rent).toBeNull();expect(plan.accountPlanning.categoryRates.itTelecom).toBeNull();
   expect(plan.decisions.seasonality).toBe(false);expect(plan.capexBudget.vehicles['2027']).toBeNull();
   expect(plan.debtForecast.cbc['2027']).toBe(330000);expect(plan.debtForecast.mbpGroupReference['2031']).toBe(149000);expect(plan.debtForecast.mbp1['2027']).toBeNull();
   expect(plan.directorCompensationSchedule).toBeUndefined();expect(plan.ebitdaReference).toBeUndefined();
@@ -29,9 +30,9 @@ test('budget Gimi persistant, validé et protégé contre les écrasements concu
   const altered=structuredClone(projection),alteredGross=altered.lines.find((line:{key:string})=>line.key==='grossMargin');alteredGross.values['2027']+=1000;
   expect(gimiBudgetProjectionIntegrity(altered).ok).toBe(false);
   expect(JSON.stringify(projection)).not.toContain('dirigeant');expect(JSON.stringify(projection)).not.toContain('compensation');
-  const {companyId:_,updatedAt:__,updatedByUserId:___,...input}=plan,inputChanged={...input,validation:{...input.validation,interimBase:true},decisions:{...input.decisions,seasonality:true},capexBudget:{...input.capexBudget,vehicles:{...input.capexBudget.vehicles,2027:100000}},debtForecast:{...input.debtForecast,openingCash2027:900000}};
+  const {companyId:_,updatedAt:__,updatedByUserId:___,...input}=plan,inputChanged={...input,validation:{...input.validation,interimBase:true},decisions:{...input.decisions,seasonality:true},hires:[{id:'hire-1',count:1,function:'Technicien',department:'intrusion',jointCommittee:'cp200',startDate:'2027-07-01',annualSalary2027:60000,hasCompanyCar:false,annualCarLeaseBudget:null}],salaryIncreases:[{id:'raise-1',count:1,function:'Technicien',department:'intrusion',jointCommittee:'cp200',effectiveDate:'2027-07-01',annualSalary2026:50000,increaseRate:.05,hasCompanyCar:true,annualCarLeaseBudget:7200}],capexBudget:{...input.capexBudget,vehicles:{...input.capexBudget.vehicles,2027:100000}},debtForecast:{...input.debtForecast,openingCash2027:900000}};
   const saved=await call(`/v1/companies/${gimi.id}/budget-plan`,'PUT',inputChanged,cookie),savedPlan=(await saved.json()).data;
-  expect(saved.status).toBe(200);expect(savedPlan.revision).toBe(1);expect(savedPlan.validation.interimBase).toBe(true);expect(savedPlan.decisions.seasonality).toBe(true);expect(savedPlan.capexBudget.vehicles['2027']).toBe(100000);expect(savedPlan.debtForecast.openingCash2027).toBe(900000);
+  expect(saved.status).toBe(200);expect(savedPlan.revision).toBe(1);expect(savedPlan.validation.interimBase).toBe(true);expect(savedPlan.decisions.seasonality).toBe(true);expect(savedPlan.hires[0].annualSalary2027).toBe(60000);expect(savedPlan.hires[0].annualSalary2026).toBeUndefined();expect(savedPlan.salaryIncreases[0].annualCarLeaseBudget).toBe(7200);expect(savedPlan.capexBudget.vehicles['2027']).toBe(100000);expect(savedPlan.debtForecast.openingCash2027).toBe(900000);
   expect((await call(`/v1/companies/${gimi.id}/budget-plan`,'PUT',inputChanged,cookie)).status).toBe(409);
   const reloaded=new Store(dir),persisted=await reloaded.getGimiBudgetPlan(gimi.id);expect(persisted.revision).toBe(1);expect(persisted.validation.interimBase).toBe(true);expect(persisted.decisions.seasonality).toBe(true);expect(persisted.capexBudget.vehicles[2027]).toBe(100000);expect(persisted.debtForecast.openingCash2027).toBe(900000);
 });

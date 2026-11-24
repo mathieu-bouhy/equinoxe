@@ -11,9 +11,10 @@ describe('calculs du budget Gimi',()=>{
   test('retient le montant Bajoma HTVA dans le budget',()=>{
     expect(bajomaAnnualCharge(plan.bajoma,2027)).toBeCloseTo(20804.03*12,2);
   });
-  test('indexe et proratise un recrutement à sa date exacte',()=>{
-    const hiring={id:'h1',count:2,function:'Technicien',department:'intrusion' as const,jointCommittee:'cp200' as const,startDate:'2027-07-01',annualSalary2026:60000};
-    expect(hiringAnnualCost(hiring,2027,plan.salaryIndexation)).toBeCloseTo(2*60000*1.0417*184/365,2);
+  test('proratise le salaire annuel 2027 d’un recrutement à sa date exacte',()=>{
+    const hiring={id:'h1',count:2,function:'Technicien',department:'intrusion' as const,jointCommittee:'cp200' as const,startDate:'2027-07-01',annualSalary2027:60000,hasCompanyCar:false,annualCarLeaseBudget:null};
+    expect(hiringAnnualCost(hiring,2027,plan.salaryIndexation)).toBeCloseTo(2*60000*184/365,2);
+    expect(hiringAnnualCost(hiring,2028,plan.salaryIndexation)).toBeCloseTo(2*60000*1.0417,2);
   });
   test('reprend CBC et la référence MBP sans double déduction des intérêts',()=>{
     const complete={
